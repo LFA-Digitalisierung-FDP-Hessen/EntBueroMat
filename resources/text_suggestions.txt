@@ -1,0 +1,72 @@
+(Logo:)
+EntBüro-Mat
+(Headline:)
+„Bürokratieprobleme? 
+Einfach melden – wir kümmern uns.“
+
+(Subline:)
+Ihr Hinweis bringt Bewegung in festgefahrene Prozesse.
+
+Eingabeformular
+{
+  "input_placeholder": "Kurz & ehrlich: Was hat genervt?",
+  "tooltip_input": "Sie müssen keine Namen nennen – einfach erzählen, was passiert ist.",
+  "tooltip_anonymous": "Ihr Name wird nicht angezeigt oder gespeichert.",
+  "hint_below_input": "Ihre Meldung kann anonym bleiben.",
+  "button_submit": "Abschicken",
+  "tooltip_submit": "Jetzt abschicken – dauert nur Sekunden.",
+  "confirmation_success": "Danke! Ihr Ärger ist angekommen.",
+  "confirmation_moderation": "Wir prüfen das kurz. Dann erscheint Ihre Meldung hier.",
+  "error_submission": "Uups! Da ist was schiefgelaufen. Bitte nochmal versuchen."
+}
+
+Populäre Meldungen
+{
+  "section_title": "Top-Ärger",
+  "like_button_text": "Kenn ich",
+  "tooltip_like": "Auch erlebt? Einfach klicken.",
+  "button_read_more": "Mehr",
+  "tooltip_read_more": "Mehr Details zur Meldung sehen.",
+  "sort_options": {
+    "newest": "Neueste",
+    "popular": "Beliebt",
+    "solved": "Gelöst"
+  },
+  "tooltips_sort": {
+    "newest": "Was zuletzt gemeldet wurde",
+    "popular": "Mit den meisten Zustimmungen",
+    "solved": "Probleme mit Happy End"
+  }
+}
+Gelöste Meldungen
+{
+  "section_title": "Happy End",
+  "tooltip_section": "Diese Probleme wurden bereits verbessert – es geht also!",
+  "button_view_case": "Ansehen"
+}
+
+Motivation & Vertrauen (optional einblendbar)
+{
+  "headline_intro": "Genug geärgert?",
+  "subline_intro": "Sag’s uns – anonym & einfach.",
+  "privacy_note": "Keine Registrierung nötig. Keine Datenweitergabe."
+}
+
+Spezialfälle für Microcopy
+•	Leerer State (keine populären Meldungen):
+Noch keine Top-Meldungen – seien Sie der Erste!
+
+•	Leerer State (keine gelösten Fälle):
+Noch nichts gelöst – aber wir arbeiten dran.
+
+•	Fehlermeldung bei Netzproblemen:
+Verbindung unterbrochen. Bitte später erneut versuchen.
+
+Last but not least ein Text, wo er hinpasst (oder würdest du das per Mouse-Over auf die Startseite packen, damit es nicht versteckt erscheint?) – als Hinweis auf uns:
+(Headline:)
+Bürokratie betrifft uns alle – teilen Sie Ihren Ärger mit uns!
+(Copy:)
+Wir alle kennen die Frustration, wenn bürokratische Hürden den Alltag erschweren: zu lange Wartezeiten, unübersichtliche Formulare oder undurchsichtige Entscheidungen. Genau deswegen haben wir diese Plattform ins Leben gerufen. Hier können Sie ganz unkompliziert Ihre Erfahrungen und Probleme mit Behörden und Verwaltung melden.
+Unser Ziel ist es, gemeinsam mit Ihnen aufzuzeigen, wo der Schuh drückt – unabhängig von politischer Herkunft oder Meinung. Denn Bürokratie sollte kein Hindernis, sondern ein Service für alle Bürgerinnen und Bürger sein.
+Diese Initiative wird von engagierten Mitgliedern der FDP Hessen unterstützt, die sich für mehr Transparenz und Effizienz in der Verwaltung einsetzen. Wir nehmen Ihre Meldungen ernst, gehen den Problemen nach und berichten hier regelmäßig über den aktuellen Stand und mögliche Lösungen.
+Wir freuen uns, wenn Sie Ihre Stimme erheben und mitmachen – nur gemeinsam können wir Veränderungen bewirken.

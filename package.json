@@ -1,0 +1,22 @@
+{
+  "name": "entbueromat",
+  "version": "1.0.0",
+  "description": "EntBüroMat - Platform for reporting bureaucracy issues",
+  "main": "server/index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run server:dev\" \"npm run client:dev\"",
+    "server:dev": "cd server && npm run dev",
+    "client:dev": "cd client && npm run dev",
+    "build": "cd client && npm run build",
+    "start": "cd server && npm start",
+    "setup": "npm install && cd server && npm install && cd ../client && npm install",
+    "db:migrate": "cd server && npm run db:migrate",
+    "db:seed": "cd server && npm run db:seed"
+  },
+  "keywords": ["bureaucracy", "reporting", "fdp", "entbueromat"],
+  "author": "FDP Hessen",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+} 

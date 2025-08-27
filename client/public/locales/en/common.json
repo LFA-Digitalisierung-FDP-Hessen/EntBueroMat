@@ -1,0 +1,98 @@
+{
+  "title": "EntBüro-Mat",
+  "subtitle": "Bureaucracy problems? Simply report – we'll take care of it.",
+  "tagline": "Your feedback gets stuck processes moving.",
+  "navigation": {
+    "home": "Home",
+    "submit": "Report",
+    "issues": "Issues",
+    "about": "About",
+    "admin": "Admin"
+  },
+  "form": {
+    "title_placeholder": "Short & honest: What was annoying?",
+    "title_tooltip": "You don't need to name names – just tell us what happened.",
+    "description_placeholder": "Describe your problem in detail...",
+    "category": "Category",
+    "location": "Location",
+    "issue_type": "Level",
+    "anonymous": "Report anonymously",
+    "anonymous_tooltip": "Your name will not be displayed or stored.",
+    "name": "Your Name",
+    "email": "Email Address",
+    "contact": "Additional contact method (optional)",
+    "attachment": "Attach file (optional)",
+    "submit": "Submit",
+    "submit_tooltip": "Submit now – takes only seconds.",
+    "hint": "Your report can remain anonymous.",
+    "success": "Thank you! Your frustration has been received.",
+    "moderation": "We'll review this briefly. Then your report will appear here.",
+    "error": "Oops! Something went wrong. Please try again."
+  },
+  "categories": {
+    "general": "General",
+    "construction": "Construction",
+    "healthcare": "Healthcare",
+    "municipal": "Municipal",
+    "taxation": "Taxation",
+    "education": "Education",
+    "environment": "Environment",
+    "transport": "Transport",
+    "business": "Business",
+    "other": "Other"
+  },
+  "issue_types": {
+    "communal": "Communal",
+    "state": "State Level",
+    "federal": "Federal Level"
+  },
+  "status": {
+    "submitted": "Submitted",
+    "in_progress": "In Progress",
+    "resolved": "Resolved",
+    "rejected": "Rejected"
+  },
+  "popular_issues": {
+    "title": "Top Issues",
+    "like_button": "I know this",
+    "like_tooltip": "Experienced this too? Just click.",
+    "read_more": "More",
+    "read_more_tooltip": "See more details about this report.",
+    "sort": {
+      "newest": "Newest",
+      "popular": "Popular",
+      "solved": "Solved"
+    },
+    "sort_tooltips": {
+      "newest": "Most recently reported",
+      "popular": "With the most approvals",
+      "solved": "Problems with happy endings"
+    }
+  },
+  "resolved_issues": {
+    "title": "Happy Endings",
+    "tooltip": "These problems have already been improved – so it works!",
+    "view_case": "View"
+  },
+  "stats": {
+    "total_issues": "Reported Problems",
+    "resolved_issues": "Solved Cases",
+    "success_rate": "Success Rate",
+    "total_votes": "Approvals"
+  },
+  "about": {
+    "headline": "Bureaucracy affects us all – share your frustration with us!",
+    "description": "We all know the frustration when bureaucratic hurdles make everyday life difficult: long waiting times, confusing forms, or opaque decisions. That's exactly why we created this platform. Here you can easily report your experiences and problems with authorities and administration.\n\nOur goal is to work together with you to show where the shoe pinches – regardless of political background or opinion. Because bureaucracy should not be an obstacle, but a service for all citizens.\n\nThis initiative is supported by committed members of the FDP Hessen, who advocate for more transparency and efficiency in administration. We take your reports seriously, investigate the problems, and regularly report here on the current status and possible solutions.\n\nWe are pleased if you raise your voice and participate – only together can we bring about change."
+  },
+  "footer": {
+    "tagline": "EntBüroMat - An initiative by FDP Hessen for less bureaucracy",
+    "privacy": "Privacy",
+    "imprint": "Legal Notice",
+    "contact": "Contact"
+  },
+  "empty_states": {
+    "no_popular": "No top reports yet – be the first!",
+    "no_resolved": "Nothing solved yet – but we're working on it.",
+    "network_error": "Connection interrupted. Please try again later."
+  }
+} 

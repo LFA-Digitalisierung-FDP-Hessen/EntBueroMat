@@ -1,0 +1,98 @@
+{
+  "title": "EntBüro-Mat",
+  "subtitle": "Bürokratieprobleme? Einfach melden – wir kümmern uns.",
+  "tagline": "Ihr Hinweis bringt Bewegung in festgefahrene Prozesse.",
+  "navigation": {
+    "home": "Startseite",
+    "submit": "Melden",
+    "issues": "Meldungen",
+    "about": "Über uns",
+    "admin": "Admin"
+  },
+  "form": {
+    "title_placeholder": "Kurz & ehrlich: Was hat genervt?",
+    "title_tooltip": "Sie müssen keine Namen nennen – einfach erzählen, was passiert ist.",
+    "description_placeholder": "Beschreiben Sie Ihr Problem ausführlich...",
+    "category": "Kategorie",
+    "location": "Ort",
+    "issue_type": "Ebene",
+    "anonymous": "Anonym melden",
+    "anonymous_tooltip": "Ihr Name wird nicht angezeigt oder gespeichert.",
+    "name": "Ihr Name",
+    "email": "E-Mail Adresse",
+    "contact": "Weitere Kontaktmöglichkeit (optional)",
+    "attachment": "Datei anhängen (optional)",
+    "submit": "Abschicken",
+    "submit_tooltip": "Jetzt abschicken – dauert nur Sekunden.",
+    "hint": "Ihre Meldung kann anonym bleiben.",
+    "success": "Danke! Ihr Ärger ist angekommen.",
+    "moderation": "Wir prüfen das kurz. Dann erscheint Ihre Meldung hier.",
+    "error": "Uups! Da ist was schiefgelaufen. Bitte nochmal versuchen."
+  },
+  "categories": {
+    "general": "Allgemein",
+    "construction": "Bauwesen",
+    "healthcare": "Gesundheitswesen",
+    "municipal": "Gemeindevorgang",
+    "taxation": "Steuerwesen",
+    "education": "Bildung",
+    "environment": "Umwelt",
+    "transport": "Verkehr",
+    "business": "Wirtschaft",
+    "other": "Sonstiges"
+  },
+  "issue_types": {
+    "communal": "Kommunal",
+    "state": "Landesebene",
+    "federal": "Bundesebene"
+  },
+  "status": {
+    "submitted": "Eingereicht",
+    "in_progress": "In Bearbeitung",
+    "resolved": "Gelöst",
+    "rejected": "Abgelehnt"
+  },
+  "popular_issues": {
+    "title": "Top-Ärger",
+    "like_button": "Kenn ich",
+    "like_tooltip": "Auch erlebt? Einfach klicken.",
+    "read_more": "Mehr",
+    "read_more_tooltip": "Mehr Details zur Meldung sehen.",
+    "sort": {
+      "newest": "Neueste",
+      "popular": "Beliebt",
+      "solved": "Gelöst"
+    },
+    "sort_tooltips": {
+      "newest": "Was zuletzt gemeldet wurde",
+      "popular": "Mit den meisten Zustimmungen",
+      "solved": "Probleme mit Happy End"
+    }
+  },
+  "resolved_issues": {
+    "title": "Happy End",
+    "tooltip": "Diese Probleme wurden bereits verbessert – es geht also!",
+    "view_case": "Ansehen"
+  },
+  "stats": {
+    "total_issues": "Gemeldete Probleme",
+    "resolved_issues": "Gelöste Fälle",
+    "success_rate": "Erfolgsquote",
+    "total_votes": "Zustimmungen"
+  },
+  "about": {
+    "headline": "Bürokratie betrifft uns alle – teilen Sie Ihren Ärger mit uns!",
+    "description": "Wir alle kennen die Frustration, wenn bürokratische Hürden den Alltag erschweren: zu lange Wartezeiten, unübersichtliche Formulare oder undurchsichtige Entscheidungen. Genau deswegen haben wir diese Plattform ins Leben gerufen. Hier können Sie ganz unkompliziert Ihre Erfahrungen und Probleme mit Behörden und Verwaltung melden.\n\nUnser Ziel ist es, gemeinsam mit Ihnen aufzuzeigen, wo der Schuh drückt – unabhängig von politischer Herkunft oder Meinung. Denn Bürokratie sollte kein Hindernis, sondern ein Service für alle Bürgerinnen und Bürger sein.\n\nDiese Initiative wird von engagierten Mitgliedern der FDP Hessen unterstützt, die sich für mehr Transparenz und Effizienz in der Verwaltung einsetzen. Wir nehmen Ihre Meldungen ernst, gehen den Problemen nach und berichten hier regelmäßig über den aktuellen Stand und mögliche Lösungen.\n\nWir freuen uns, wenn Sie Ihre Stimme erheben und mitmachen – nur gemeinsam können wir Veränderungen bewirken."
+  },
+  "footer": {
+    "tagline": "EntBüroMat - Eine Initiative der FDP Hessen für weniger Bürokratie",
+    "privacy": "Datenschutz",
+    "imprint": "Impressum",
+    "contact": "Kontakt"
+  },
+  "empty_states": {
+    "no_popular": "Noch keine Top-Meldungen – seien Sie der Erste!",
+    "no_resolved": "Noch nichts gelöst – aber wir arbeiten dran.",
+    "network_error": "Verbindung unterbrochen. Bitte später erneut versuchen."
+  }
+} 

@@ -1,0 +1,74 @@
+services:
+  database:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  server:
+    build: ./server
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      - NODE_ENV=production
+      - DB_HOST=database
+      - DB_PORT=${DB_PORT}
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - JWT_SECRET=${JWT_SECRET}
+      - EMAIL_HOST=${EMAIL_HOST}
+      - EMAIL_PORT=${EMAIL_PORT}
+      - EMAIL_USER=${EMAIL_USER}
+      - EMAIL_PASSWORD=${EMAIL_PASSWORD}
+      - ADMIN_EMAIL=${ADMIN_EMAIL}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - ADMIN_USERNAME=${ADMIN_USERNAME}
+      - BASE_URL=${BASE_URL}
+    ports:
+      - "3001:3001"
+    restart: unless-stopped
+    volumes:
+      - ./uploads:/app/uploads
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3001/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  client:
+    build: ./client
+    depends_on:
+      server:
+        condition: service_healthy
+    environment:
+      - NEXT_PUBLIC_API_URL=${BASE_URL}/api
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+
+  nginx:
+    build: ./nginx
+    depends_on:
+      - client
+      - server
+    ports:
+      - "80:80"
+      - "443:443"
+    restart: unless-stopped
+
+volumes:
+  postgres_data: 

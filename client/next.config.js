@@ -42,13 +42,7 @@ const nextConfig = {
 
   // Redirect configuration
   async redirects() {
-    return [
-      {
-        source: '/admin',
-        destination: '/admin/dashboard',
-        permanent: true,
-      },
-    ];
+    return [];
   },
 };
 

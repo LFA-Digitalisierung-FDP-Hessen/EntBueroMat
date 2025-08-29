@@ -5,6 +5,8 @@ import { useQuery } from 'react-query';
 import { getIssues, getCategories, voteForIssue, removeVote, getVoteStatus } from '../utils/api';
 import type { Issue } from '../utils/api';
 import toast, { Toaster } from 'react-hot-toast';
+import Footer from '../components/Footer';
+import Header from '../components/Header';
 
 interface FiltersState {
   category: string;
@@ -188,20 +190,7 @@ export default function IssuesPage() {
       </Head>
 
       {/* Header */}
-      <header>
-        <div className="container">
-          <div className="header-content">
-            <Link href="/" className="logo">
-              EntBüro-Mat
-            </Link>
-            <nav className="nav-links">
-              <Link href="/">Startseite</Link>
-              <Link href="/issues" style={{ borderBottomColor: 'var(--fdp-magenta)' }}>Meldungen</Link>
-              <Link href="/about">Über uns</Link>
-            </nav>
-          </div>
-        </div>
-      </header>
+      <Header />
 
       {/* Main Content */}
       <main>
@@ -414,40 +403,7 @@ export default function IssuesPage() {
       </main>
 
       {/* Footer */}
-      <footer>
-        <div className="container">
-          <div className="footer-content">
-            <div className="footer-section">
-              <h3>EntBüro-Mat</h3>
-              <p>Eine Initiative der FDP Hessen für weniger Bürokratie und effizientere Verwaltung.</p>
-            </div>
-            <div className="footer-section">
-              <h3>Navigation</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <Link href="/">Startseite</Link>
-                <Link href="/issues">Alle Meldungen</Link>
-                <Link href="/about">Über uns</Link>
-                <Link href="/admin">Admin</Link>
-              </div>
-            </div>
-            <div className="footer-section">
-              <h3>Rechtliches</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <Link href="/privacy">Datenschutz</Link>
-                <Link href="/imprint">Impressum</Link>
-                <Link href="/contact">Kontakt</Link>
-              </div>
-            </div>
-            <div className="footer-section">
-              <h3>FDP Hessen</h3>
-              <p>Für mehr Transparenz und Effizienz in der Verwaltung.</p>
-            </div>
-          </div>
-          <div className="footer-bottom">
-            <p>&copy; 2025 EntBüro-Mat. Alle Rechte vorbehalten.</p>
-          </div>
-        </div>
-      </footer>
+      <Footer />
 
       <Toaster position="top-right" />
       
@@ -480,7 +436,6 @@ export default function IssuesPage() {
         .filter-label {
           font-family: "field-gothic-no-75-bold-wide", "Inter", sans-serif;
           font-weight: 700;
-          text-transform: uppercase;
           margin-bottom: 8px;
           color: var(--fdp-black);
           font-size: 12px;
@@ -634,7 +589,6 @@ export default function IssuesPage() {
             border-radius: 8px;
             font-family: "field-gothic-no-75-bold-wide", "Inter", sans-serif;
             font-weight: 700;
-            text-transform: uppercase;
             color: var(--fdp-black);
             cursor: pointer;
             transition: all 0.3s ease;

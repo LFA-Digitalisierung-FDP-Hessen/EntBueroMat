@@ -6,6 +6,7 @@ import { useQuery } from 'react-query';
 import { getPublicStats } from '../utils/api';
 import PopularIssues from '../components/PopularIssues';
 import toast, { Toaster } from 'react-hot-toast';
+import Footer from '../components/Footer';
 
 export default function Home() {
   const router = useRouter();
@@ -113,13 +114,13 @@ export default function Home() {
                 <textarea
                   value={quickDescription}
                   onChange={(e) => setQuickDescription(e.target.value)}
+                  placeholder="Beschreiben Sie Ihr Problem..."
+                  maxLength={5000}
                   className="quick-textarea"
-                  placeholder="Beschreiben Sie Ihr Bürokratie-Problem... z.B. 'Lange Wartezeiten im Bürgeramt', 'Komplizierte Antragsverfahren', 'Unfreundliche Behandlung beim Amt'..."
                   rows={4}
-                  maxLength={500}
                 />
                 <small className="char-counter">
-                  {quickDescription.length}/500 Zeichen
+                  {quickDescription.length}/5000 Zeichen
                 </small>
               </div>
               
@@ -256,37 +257,7 @@ export default function Home() {
       `}</style>
 
       {/* Footer */}
-      <footer>
-        <div className="container">
-          <div className="footer-content">
-            <div className="footer-section">
-              <h3>EntBüro-Mat</h3>
-              <p>Eine Initiative der FDP Hessen für weniger Bürokratie und effizientere Verwaltung.</p>
-            </div>
-            <div className="footer-section">
-              <h3>Navigation</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <Link href="/">Startseite</Link>
-                <Link href="/issues">Alle Meldungen</Link>
-                <Link href="/about">Über uns</Link>
-                <Link href="/admin">Admin</Link>
-              </div>
-            </div>
-            <div className="footer-section">
-              <h3>Rechtliches</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <Link href="/privacy">Datenschutz</Link>
-                <Link href="/imprint">Impressum</Link>
-                <Link href="/contact">Kontakt</Link>
-              </div>
-            </div>
-          </div>
-          <div className="footer-bottom">
-            <p>&copy; 2025 EntBüro-Mat. Alle Rechte vorbehalten.</p>
-          </div>
-        </div>
-      </footer>
-
+      <Footer />
       {/* Toast notifications */}
       <Toaster position="top-right" />
     </>

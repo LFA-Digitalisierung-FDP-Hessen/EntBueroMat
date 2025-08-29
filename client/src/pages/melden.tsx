@@ -73,10 +73,8 @@ export default function MeldenPage() {
       await submitIssue(submissionData);
       toast.success('Ihre Meldung wurde erfolgreich eingereicht und wird nach Prüfung veröffentlicht!');
       
-      // Redirect to issues page after successful submission
-      setTimeout(() => {
-        router.push('/issues');
-      }, 3000);
+      // Redirect to issues page immediately after successful submission
+      router.push('/issues');
       
     } catch (error: any) {
       console.error('Error:', error);
@@ -137,18 +135,16 @@ export default function MeldenPage() {
       {/* Main Content */}
       <main>
         {/* Page Header */}
-        <section className="hero" style={{ minHeight: '40vh' }}>
+        <section className="section" style={{ paddingTop: '40px', paddingBottom: '40px' }}>
           <div className="container">
-            <div className="hero-content">
-              <h1>Problem melden</h1>
-              <p>
-                Beschreiben Sie Ihr Bürokratie-Problem ausführlich. 
-                Ihre Meldung hilft dabei, Verbesserungen zu schaffen.
-              </p>
-              <div className="moderation-notice">
-                <span>📋</span>
-                <span>Ihre Meldung wird nach einer kurzen Prüfung veröffentlicht</span>
-              </div>
+            <h1 className="section-title">Problem melden</h1>
+            <p>
+              Beschreiben Sie Ihr Bürokratie-Problem ausführlich. 
+              Ihre Meldung hilft dabei, Verbesserungen zu schaffen.
+            </p>
+            <div className="moderation-notice">
+              <span>📋</span>
+              <span>Ihre Meldung wird nach einer kurzen Prüfung veröffentlicht</span>
             </div>
           </div>
         </section>
@@ -277,7 +273,7 @@ export default function MeldenPage() {
                       <span className="checkbox-text">Anonym melden</span>
                     </label>
                     <small className="form-help">
-                      Empfohlen: Ihre Daten werden nicht öffentlich angezeigt
+                      Sofern Sie über Updates und Rückfragen informiert werden möchten, geben Sie bitte Ihre E-Mail-Adresse an.
                     </small>
                   </div>
                 </div>
@@ -423,7 +419,7 @@ export default function MeldenPage() {
         .checkbox-text {
           font-family: "field-gothic-no-75-bold-wide", "Inter", sans-serif;
           font-weight: 700;
-          text-transform: uppercase;
+          margin-bottom: 5px;
           color: var(--fdp-black);
         }
 

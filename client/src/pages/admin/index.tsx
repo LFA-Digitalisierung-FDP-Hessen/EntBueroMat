@@ -82,6 +82,26 @@ export default function AdminDashboard() {
     }
   );
 
+  // Get the issues from the pendingIssuesData
+  let pendingIssues: any[] = [];
+  if (pendingIssuesData?.issues) {
+    pendingIssues = pendingIssuesData.issues.filter((issue: any) => issue.status !== 'rejected');
+  }
+
+  // Fetch rejected issues
+  const { data: rejectedIssuesData, isLoading: rejectedLoading } = useQuery(
+    ['adminIssues', 'rejected'],
+    () => fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/issues/rejected`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+      }
+    }).then(res => res.json()),
+    {
+      enabled: !!currentUser,
+      refetchInterval: 10000 // Refresh every 10 seconds
+    }
+  );
+
   const handleLogout = () => {
     localStorage.removeItem('auth_token');
     toast.success('Erfolgreich abgemeldet');
@@ -155,6 +175,86 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleReactivate = async (issueId: number) => {
+    const token = localStorage.getItem('auth_token');
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/issues/${issueId}/reactivate`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ reason: 'Reactivated by admin' })
+      });
+
+      if (response.ok) {
+        toast.success('Meldung reaktiviert');
+        queryClient.invalidateQueries(['adminIssues', 'rejected']);
+        queryClient.invalidateQueries('adminStats');
+      } else {
+        toast.error('Fehler beim Reaktivieren');
+      }
+    } catch (error) {
+      toast.error('Fehler beim Reaktivieren');
+    }
+  };
+
+  const handleDelete = async (issueId: number) => {
+    const token = localStorage.getItem('auth_token');
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/issues/admin/${issueId}/delete`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ reason: 'Deleted by admin' })
+      });
+
+      if (response.ok) {
+        toast.success('Meldung gelöscht');
+        queryClient.invalidateQueries(['adminIssues', 'rejected']);
+        queryClient.invalidateQueries('adminStats');
+      } else {
+        toast.error('Fehler beim Löschen');
+      }
+    } catch (error) {
+      toast.error('Fehler beim Löschen');
+    }
+  };
+
+  const handleExport = async () => {
+    const token = localStorage.getItem('auth_token');
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/export`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'issues_export.csv';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      } else {
+        toast.error('Fehler beim Exportieren');
+      }
+    } catch (error) {
+      toast.error('Fehler beim Exportieren');
+    }
+  };
+
+  const handleRefresh = () => {
+    queryClient.invalidateQueries('adminIssues');
+    queryClient.invalidateQueries('adminStats');
+  };
+
   const getCategoryLabel = (category: string) => {
     const categoryMap: Record<string, string> = {
       'general': 'Allgemein',
@@ -180,6 +280,9 @@ export default function AdminDashboard() {
     };
     return statusMap[status] || status;
   };
+
+  // State for collapsed sections
+  const [isRejectedCollapsed, setIsRejectedCollapsed] = useState(true);
 
   if (!currentUser) {
     return <div>Loading...</div>;
@@ -268,18 +371,27 @@ export default function AdminDashboard() {
 
             {/* Pending Issues Section */}
             <div className="pending-section">
-              <h2 className="section-title">Genehmigung erforderlich</h2>
+              <div className="section-header">
+                <h2 className="section-title">Genehmigung erforderlich</h2>
+                <button 
+                  onClick={handleRefresh}
+                  className="refresh-btn"
+                  title="Meldungen aktualisieren"
+                >
+                  🔄 Aktualisieren
+                </button>
+              </div>
               
               {issuesLoading ? (
                 <div className="loading">Lädt...</div>
-              ) : pendingIssuesData?.issues?.length === 0 ? (
+              ) : pendingIssues?.length === 0 ? (
                 <div className="no-pending">
                   <span className="icon">✨</span>
                   <p>Alle Meldungen sind bearbeitet!</p>
                 </div>
               ) : (
                 <div className="pending-list">
-                  {pendingIssuesData?.issues?.map((issue: any) => (
+                  {pendingIssues?.map((issue: any) => (
                     <div key={issue.id} className="pending-item">
                       <div className="issue-info">
                         <div className="issue-header">
@@ -323,27 +435,84 @@ export default function AdminDashboard() {
               )}
             </div>
 
+            {/* Rejected Issues Section */}
+            <div className="rejected-section">
+              <h2 className="section-title">Abgelehnte Meldungen</h2>
+              
+              {rejectedLoading ? (
+                <div className="loading">Lädt...</div>
+              ) : rejectedIssuesData?.issues?.length === 0 ? (
+                <div className="no-rejected">
+                  <span className="icon">✨</span>
+                  <p>Keine abgelehnten Meldungen!</p>
+                </div>
+              ) : (
+                <div className="rejected-list">
+                  {rejectedIssuesData?.issues?.map((issue: any) => (
+                    <div key={issue.id} className="rejected-item">
+                      <div className="issue-info">
+                        <div className="issue-header">
+                          <h3 className="issue-title">{issue.title}</h3>
+                          <div className="issue-meta">
+                            <span className="category">{getCategoryLabel(issue.category)}</span>
+                            {issue.location && <span className="location">📍 {issue.location}</span>}
+                          </div>
+                        </div>
+                        <p className="issue-description">
+                          {issue.description.length > 200 
+                            ? `${issue.description.substring(0, 200)}...` 
+                            : issue.description
+                          }
+                        </p>
+                        <div className="issue-details">
+                          <span>Abgelehnt: {new Date(issue.rejected_at).toLocaleDateString('de-DE')}</span>
+                          <span>Typ: {issue.issue_type}</span>
+                          {!issue.is_anonymous && issue.submitter_email && (
+                            <span>Von: {issue.submitter_email}</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="actions">
+                        <button 
+                          onClick={() => handleReactivate(issue.id)}
+                          className="reactivate-btn"
+                        >
+                          🔄 Reaktivieren
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(issue.id)}
+                          className="delete-btn"
+                        >
+                          🗑️ Löschen
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Quick Actions */}
             <div className="quick-actions">
               <h2 className="section-title">Schnellzugriff</h2>
               <div className="actions-grid">
-                <Link href="/issues" className="action-card">
+                <a href="/issues" className="action-card">
                   <div className="action-icon">👀</div>
                   <div className="action-title">Alle Meldungen anzeigen</div>
                   <div className="action-desc">Öffentliche Ansicht besuchen</div>
-                </Link>
+                </a>
                 
-                <a href="/api/admin/export" className="action-card" download>
+                <a onClick={handleExport} className="action-card">
                   <div className="action-icon">📊</div>
                   <div className="action-title">Daten exportieren</div>
                   <div className="action-desc">CSV-Export aller Meldungen</div>
                 </a>
                 
-                <Link href="/" className="action-card">
+                <a href="/" className="action-card">
                   <div className="action-icon">🏠</div>
                   <div className="action-title">Zur Startseite</div>
                   <div className="action-desc">Öffentliche Website besuchen</div>
-                </Link>
+                </a>
               </div>
             </div>
           </div>
@@ -389,7 +558,6 @@ export default function AdminDashboard() {
           font-weight: 700;
           color: var(--fdp-magenta);
           text-decoration: none;
-          text-transform: uppercase;
         }
 
         .admin-badge {
@@ -399,7 +567,6 @@ export default function AdminDashboard() {
           border-radius: 1rem;
           font-size: 0.75rem;
           font-weight: 700;
-          text-transform: uppercase;
         }
 
         .user-section {
@@ -505,11 +672,39 @@ export default function AdminDashboard() {
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
 
+        .section-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 1.5rem;
+        }
+
         .section-title {
           font-size: 1.25rem;
           font-weight: 600;
           color: #111827;
-          margin-bottom: 1.5rem;
+          margin: 0;
+        }
+
+        .refresh-btn {
+          background: var(--fdp-magenta);
+          color: white;
+          border: none;
+          padding: 0.5rem 1rem;
+          border-radius: 0.375rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          font-size: 0.875rem;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .refresh-btn:hover {
+          background: var(--fdp-yellow);
+          color: var(--fdp-black);
+          transform: translateY(-1px);
         }
 
         .no-pending {
@@ -624,38 +819,65 @@ export default function AdminDashboard() {
           background: #dc2626;
         }
 
+        .reactivate-btn, .delete-btn {
+          padding: 0.5rem 1rem;
+          border: none;
+          border-radius: 0.375rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+          min-width: 120px;
+        }
+
+        .reactivate-btn {
+          background: #3b82f6;
+          color: white;
+        }
+
+        .reactivate-btn:hover {
+          background: #2563eb;
+        }
+
+        .delete-btn {
+          background: #ef4444;
+          color: white;
+        }
+
+        .delete-btn:hover {
+          background: #dc2626;
+        }
+
         .actions-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
           gap: 1.5rem;
         }
 
         .action-card {
           background: #f9fafb;
-          border: 1px solid #e5e7eb;
-          border-radius: 0.5rem;
+          border-radius: 0.75rem;
           padding: 1.5rem;
-          text-decoration: none;
-          color: inherit;
-          transition: all 0.2s;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
           text-align: center;
+          transition: transform 0.3s ease;
+          cursor: pointer;
         }
 
         .action-card:hover {
-          background: var(--fdp-yellow);
-          border-color: var(--fdp-magenta);
-          transform: translateY(-2px);
+          transform: translateY(-4px);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
 
         .action-icon {
           font-size: 2rem;
-          margin-bottom: 0.75rem;
+          margin-bottom: 0.5rem;
         }
 
         .action-title {
+          font-size: 1.125rem;
           font-weight: 600;
           color: #111827;
-          margin-bottom: 0.5rem;
+          margin-bottom: 0.25rem;
         }
 
         .action-desc {
@@ -667,6 +889,33 @@ export default function AdminDashboard() {
           text-align: center;
           padding: 2rem;
           color: #6b7280;
+        }
+
+        .no-rejected {
+          text-align: center;
+          padding: 3rem;
+          color: #6b7280;
+        }
+
+        .no-rejected .icon {
+          font-size: 3rem;
+          display: block;
+          margin-bottom: 1rem;
+        }
+
+        .rejected-list {
+          space-y: 1rem;
+        }
+
+        .rejected-item {
+          border: 1px solid #e5e7eb;
+          border-radius: 0.5rem;
+          padding: 1.5rem;
+          margin-bottom: 1rem;
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          gap: 1.5rem;
         }
 
         @media (max-width: 768px) {

@@ -6,6 +6,7 @@ const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
 require('dotenv').config();
+const http = require('http');
 
 const { initializeDatabase } = require('./database/db');
 const { setupDefaultAdmin } = require('./setup-admin');
@@ -14,6 +15,7 @@ const votesRouter = require('./routes/votes');
 const adminRouter = require('./routes/admin');
 const publicRouter = require('./routes/public');
 const statusRouter = require('./routes/status');
+const { setupWebSocket } = require('./routes/admin');
 
 // Initialize scheduled tasks
 require('./services/emailScheduler');
@@ -27,8 +29,16 @@ app.use(helmet({
         directives: {
             defaultSrc: ["'self'"],
             styleSrc: ["'self'", "'unsafe-inline'"],
-            scriptSrc: ["'self'"],
+            scriptSrc: ["'self'", "'unsafe-eval'", "'unsafe-inline'"],
             imgSrc: ["'self'", "data:", "https:"],
+            connectSrc: ["'self'", "http://localhost:3001", "https://localhost:3001", "ws://localhost:3001", "wss://localhost:3001"],
+            fontSrc: ["'self'", "fonts.gstatic.com", "use.typekit.net"],
+            baseUri: ["'self'"],
+            formAction: ["'self'"],
+            frameAncestors: ["'self'"],
+            objectSrc: ["'none'"],
+            scriptSrcAttr: ["'none'"],
+            upgradeInsecureRequests: []
         },
     },
 }));
@@ -136,8 +146,11 @@ async function startServer() {
         // Setup default admin user
         await setupDefaultAdmin();
         
-        app.listen(PORT, () => {
-            console.log(`EntBüroMat server running on port ${PORT}`);
+        const server = http.createServer(app);
+
+        // Start the server
+        server.listen(PORT, () => {
+            console.log(`Server is running on port ${PORT}`);
             console.log(`Environment: ${process.env.NODE_ENV}`);
         });
     } catch (error) {

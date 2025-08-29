@@ -102,7 +102,6 @@ router.get('/', async (req, res) => {
         if (search) {
             whereClause += ` AND (title ILIKE $${++paramCount} OR description ILIKE $${++paramCount})`;
             queryParams.push(`%${search}%`, `%${search}%`);
-            paramCount++;
         }
 
         // Validate sort and order
@@ -363,9 +362,9 @@ router.delete('/admin/:id/reject', authenticateAdmin, async (req, res) => {
 
         const attachmentPath = issueResult.rows[0].attachment_path;
 
-        // Delete the issue
-        const deleteQuery = `DELETE FROM issues WHERE id = $1`;
-        await query(deleteQuery, [id]);
+        // Mark the issue as rejected
+        const rejectQuery = `UPDATE issues SET status = 'rejected', rejected_at = CURRENT_TIMESTAMP WHERE id = $1`;
+        await query(rejectQuery, [id]);
 
         // Clean up attachment file if exists
         if (attachmentPath) {
@@ -373,7 +372,7 @@ router.delete('/admin/:id/reject', authenticateAdmin, async (req, res) => {
             await fs.unlink(filePath).catch(() => {}); // Ignore errors
         }
 
-        res.json({ message: 'Issue rejected and deleted' });
+        res.json({ message: 'Issue rejected and marked as rejected' });
     } catch (error) {
         console.error('Error rejecting issue:', error);
         res.status(500).json({ error: 'Failed to reject issue' });

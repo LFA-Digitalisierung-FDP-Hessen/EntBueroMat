@@ -20,7 +20,8 @@ CREATE TABLE issues (
     fdp_division_contacted BOOLEAN DEFAULT false,
     secure_update_token UUID UNIQUE,
     attachment_path VARCHAR(500),
-    admin_notes TEXT
+    admin_notes TEXT,
+    rejected_at TIMESTAMP
 );
 
 -- Votes table for the "like" system

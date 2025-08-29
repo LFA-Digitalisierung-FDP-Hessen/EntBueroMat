@@ -20,7 +20,7 @@ export default function Document() {
         <meta name="msapplication-TileColor" content="#e5007d" />
         
         {/* Basic Security headers */}
-        <meta httpEquiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline' fonts.googleapis.com use.typekit.net; font-src 'self' fonts.gstatic.com use.typekit.net; img-src 'self' data: https:; connect-src 'self' http://localhost:3001 https://localhost:3001;" />
+        <meta httpEquiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline' fonts.googleapis.com use.typekit.net; font-src 'self' fonts.gstatic.com use.typekit.net; img-src 'self' data: https:; connect-src 'self' http://localhost:3001 https://localhost:3001 ws://localhost:3001 wss://localhost:3001;" />
       </Head>
       <body>
         <Main />

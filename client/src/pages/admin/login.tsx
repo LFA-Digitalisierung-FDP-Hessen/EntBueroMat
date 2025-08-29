@@ -28,12 +28,12 @@ export default function AdminLogin() {
         password: data.password
       });
       localStorage.setItem('auth_token', response.token);
-      toast.success('Erfolgreich angemeldet!');
+      toast.success('Erfolgreich angemeldet!', { duration: 4000 });
       router.push('/admin');
     } catch (error: any) {
       console.error('Login error:', error);
       const message = error.response?.data?.error || 'Anmeldung fehlgeschlagen';
-      toast.error(message);
+      toast.error(message, { duration: 4000 });
     } finally {
       setIsLoading(false);
     }
@@ -179,7 +179,6 @@ export default function AdminLogin() {
           font-size: 2rem;
           font-weight: 700;
           color: var(--fdp-magenta);
-          text-transform: uppercase;
         }
 
         .admin-badge {
@@ -189,7 +188,6 @@ export default function AdminLogin() {
           border-radius: 1.5rem;
           font-size: 0.875rem;
           font-weight: 700;
-          text-transform: uppercase;
           font-family: "field-gothic-no-75-bold-wide", "Inter", sans-serif;
         }
 
@@ -198,7 +196,6 @@ export default function AdminLogin() {
           font-size: 2.5rem;
           font-weight: 700;
           color: var(--fdp-black);
-          text-transform: uppercase;
           margin-bottom: 0.75rem;
         }
 
@@ -220,7 +217,6 @@ export default function AdminLogin() {
           display: block;
           font-family: "field-gothic-no-75-bold-wide", "Inter", sans-serif;
           font-weight: 700;
-          text-transform: uppercase;
           margin-bottom: 0.5rem;
           color: var(--fdp-black);
           font-size: 0.875rem;
@@ -269,7 +265,6 @@ export default function AdminLogin() {
           cursor: pointer;
           font-family: "field-gothic-no-75-bold-wide", "Inter", sans-serif;
           font-weight: 700;
-          text-transform: uppercase;
           text-decoration: none;
           transition: all 0.3s ease;
           border-radius: 8px;

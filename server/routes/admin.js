@@ -241,6 +241,76 @@ router.get('/issues', authenticateAdmin, async (req, res) => {
     }
 });
 
+// GET /api/admin/issues/rejected - Get rejected issues for admin management
+router.get('/issues/rejected', authenticateAdmin, async (req, res) => {
+    try {
+        const rejectedQuery = `
+            SELECT 
+                id, title, description, category, location, issue_type,
+                is_anonymous, submitter_name, submitter_email, created_at,
+                attachment_path, rejected_at
+            FROM issues
+            WHERE status = 'rejected'
+            ORDER BY rejected_at DESC
+        `;
+
+        const result = await query(rejectedQuery);
+        res.json({ issues: result.rows });
+    } catch (error) {
+        console.error('Error fetching rejected issues:', error);
+        res.status(500).json({ error: 'Failed to fetch rejected issues' });
+    }
+});
+
+// GET /api/admin/export - Export issues to CSV
+router.get('/export', authenticateAdmin, async (req, res) => {
+    try {
+        const issuesQuery = `
+            SELECT 
+                id, title, description, category, location, issue_type,
+                is_anonymous, submitter_name, submitter_email, created_at,
+                approved_at, resolved_at, rejected_at
+            FROM issues
+            ORDER BY created_at ASC
+        `;
+
+        const result = await query(issuesQuery);
+        const issues = result.rows;
+
+        // Convert issues to CSV format
+        const csvHeaders = [
+            'ID', 'Title', 'Description', 'Category', 'Location', 'Issue Type',
+            'Is Anonymous', 'Submitter Name', 'Submitter Email', 'Created At',
+            'Approved At', 'Resolved At', 'Rejected At'
+        ];
+
+        const csvRows = issues.map(issue => [
+            issue.id,
+            issue.title,
+            `"${issue.description.replace(/"/g, '""')}"`, // Escape double quotes
+            issue.category,
+            issue.location,
+            issue.issue_type,
+            issue.is_anonymous,
+            issue.submitter_name,
+            issue.submitter_email,
+            issue.created_at,
+            issue.approved_at,
+            issue.resolved_at,
+            issue.rejected_at
+        ]);
+
+        const csvContent = [csvHeaders, ...csvRows].map(e => e.join(",")).join("\n");
+
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', 'attachment; filename="issues_export.csv"');
+        res.send(csvContent);
+    } catch (error) {
+        console.error('Error exporting issues to CSV:', error);
+        res.status(500).json({ error: 'Failed to export issues to CSV' });
+    }
+});
+
 // POST /api/admin/users - Create new admin user (admin only)
 router.post('/users', authenticateAdmin, requireRole(['admin']), async (req, res) => {
     try {
@@ -335,4 +405,29 @@ router.put('/issues/:id/status', authenticateAdmin, async (req, res) => {
     }
 });
 
-module.exports = router; 
+// POST /api/admin/issues/:id/reactivate - Reactivate a rejected issue
+router.post('/issues/:id/reactivate', authenticateAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const reactivateQuery = `
+            UPDATE issues
+            SET status = 'submitted', rejected_at = NULL
+            WHERE id = $1 AND status = 'rejected'
+            RETURNING *
+        `;
+
+        const result = await query(reactivateQuery, [id]);
+        const reactivatedIssue = result.rows[0];
+
+        if (!reactivatedIssue) {
+            return res.status(404).json({ error: 'Issue not found or not rejected' });
+        }
+
+        res.json({ message: 'Issue reactivated successfully', issue: reactivatedIssue });
+    } catch (error) {
+        console.error('Error reactivating issue:', error);
+        res.status(500).json({ error: 'Failed to reactivate issue' });
+    }
+});
+
+module.exports = router;

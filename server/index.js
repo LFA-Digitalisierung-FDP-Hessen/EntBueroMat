@@ -5,7 +5,7 @@ const compression = require('compression');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
-require('dotenv').config();
+// Environment variables are provided by docker-compose.yml or system environment
 const http = require('http');
 
 const { initializeDatabase } = require('./database/db');
@@ -21,7 +21,27 @@ const { setupWebSocket } = require('./routes/admin');
 require('./services/emailScheduler');
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+
+// Validate required environment variables
+const requiredEnvVars = [
+    { name: 'PORT', example: '3001', description: 'Server-Port' },
+    { name: 'NEXT_PORT', example: '3000', description: 'Frontend-Port (Client)' },
+    { name: 'BASE_URL', example: 'http://localhost:3000', description: 'Frontend-URL' },
+    { name: 'NEXT_PUBLIC_API_URL', example: 'http://localhost:3001/api', description: 'API-URL' }
+];
+
+const missingVars = requiredEnvVars.filter(envVar => !process.env[envVar.name]);
+
+if (missingVars.length > 0) {
+    console.error('❌ FEHLER: Erforderliche Umgebungsvariablen fehlen:');
+    missingVars.forEach(envVar => {
+        console.error(`   ${envVar.name}=${envVar.example}  # ${envVar.description}`);
+    });
+    console.error('\n💡 Tipp: Kopiere .env.example zu .env und konfiguriere die Werte.');
+    process.exit(1);
+}
+
+const PORT = process.env.PORT;
 
 // Security middleware
 app.use(helmet({
@@ -31,7 +51,7 @@ app.use(helmet({
             styleSrc: ["'self'", "'unsafe-inline'"],
             scriptSrc: ["'self'", "'unsafe-eval'", "'unsafe-inline'"],
             imgSrc: ["'self'", "data:", "https:"],
-            connectSrc: ["'self'", "http://localhost:3001", "https://localhost:3001", "ws://localhost:3001", "wss://localhost:3001"],
+            connectSrc: ["'self'", process.env.NEXT_PUBLIC_API_URL?.replace('/api', ''), process.env.NEXT_PUBLIC_API_URL?.replace('/api', '').replace('http://', 'https://')],
             fontSrc: ["'self'", "fonts.gstatic.com", "use.typekit.net"],
             baseUri: ["'self'"],
             formAction: ["'self'"],
@@ -73,11 +93,10 @@ app.use(cors({
         if (!origin) return callback(null, true);
         
         const allowedOrigins = [
-            'http://localhost:3000',
-            'http://127.0.0.1:3000',
-            'https://localhost:3000',
-            'http://localhost:3001', // Add server origin for debugging
-            process.env.BASE_URL
+            process.env.BASE_URL,
+            process.env.BASE_URL?.replace('http://', 'https://'),
+            process.env.BASE_URL?.replace('localhost', '127.0.0.1'),
+            process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') // Add server origin for debugging
         ].filter(Boolean); // Remove undefined values
         
         if (allowedOrigins.includes(origin) || process.env.NODE_ENV !== 'production') {
@@ -100,6 +119,25 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Health check endpoint
 app.get('/health', (req, res) => {
     res.status(200).json({ status: 'OK', timestamp: new Date().toISOString() });
+});
+
+// Welcome endpoint for root API access
+app.get('/api', (req, res) => {
+    res.status(200).json({
+        message: '🎉 EntBüro-Mat API Server läuft!',
+        version: '1.0.0',
+        port: PORT,
+        environment: process.env.NODE_ENV,
+        timestamp: new Date().toISOString(),
+        endpoints: {
+            public: '/api/public',
+            issues: '/api/issues', 
+            votes: '/api/votes',
+            admin: '/api/admin',
+            status: '/api/status'
+        },
+        info: 'Dieser Server stellt die API für den EntBüro-Mat bereit.'
+    });
 });
 
 // Apply general rate limiting to all API routes

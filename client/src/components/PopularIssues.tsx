@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery } from 'react-query';
-import { getTopIssues, voteForIssue, removeVote, getVoteStatus } from '../utils/api';
+import { getTopIssues, voteForIssue, removeVote } from '../utils/api';
 import toast from 'react-hot-toast';
 
 interface PopularIssuesProps {
@@ -22,38 +22,19 @@ export default function PopularIssues({ limit = 3 }: PopularIssuesProps) {
     () => getTopIssues(limit)
   );
 
-  // Load vote statuses for visible issues with delay to prevent rate limiting
+  // Initialize vote statuses from issue data (no more separate API calls needed!)
   useEffect(() => {
     if (data?.issues) {
-      const loadVoteStatuses = async () => {
-        const newStatuses: VoteStatus = {};
-        
-        // Load statuses with 100ms delay between calls to prevent rate limiting
-        for (let i = 0; i < data.issues.length; i++) {
-          const issue = data.issues[i];
-          try {
-            // Add delay between requests
-            if (i > 0) {
-              await new Promise(resolve => setTimeout(resolve, 100));
-            }
-            const status = await getVoteStatus(issue.id);
-            newStatuses[issue.id] = status;
-          } catch (error) {
-            console.warn(`Failed to load vote status for issue ${issue.id}:`, error);
-            // If vote status can't be loaded, set defaults
-            newStatuses[issue.id] = {
-              hasVoted: false,
-              voteCount: issue.vote_count || 0
-            };
-          }
-        }
-        
-        setVoteStatuses(newStatuses);
-      };
-
-      // Add delay before starting to load vote statuses
-      const timeoutId = setTimeout(loadVoteStatuses, 300);
-      return () => clearTimeout(timeoutId);
+      const newStatuses: VoteStatus = {};
+      
+      data.issues.forEach((issue) => {
+        newStatuses[issue.id] = {
+          hasVoted: issue.has_voted || false,
+          voteCount: issue.vote_count || 0
+        };
+      });
+      
+      setVoteStatuses(newStatuses);
     }
   }, [data?.issues]);
 

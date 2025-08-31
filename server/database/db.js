@@ -1,10 +1,23 @@
 const { Pool } = require('pg');
 
+// Validate required database environment variables
+const requiredDbVars = ['DB_HOST', 'DB_PORT', 'DB_NAME', 'DB_USER', 'DB_PASSWORD'];
+const missingDbVars = requiredDbVars.filter(varName => !process.env[varName]);
+
+if (missingDbVars.length > 0) {
+    console.error('❌ FEHLER: Erforderliche Datenbank-Umgebungsvariablen fehlen:');
+    missingDbVars.forEach(varName => {
+        console.error(`   ${varName} ist nicht gesetzt`);
+    });
+    console.error('\n💡 Tipp: Setze alle Datenbank-Variablen in der .env Datei');
+    process.exit(1);
+}
+
 const pool = new Pool({
-    host: process.env.DB_HOST || 'localhost',
-    port: process.env.DB_PORT || 5432,
-    database: process.env.DB_NAME || 'entbueromat',
-    user: process.env.DB_USER || 'entbueromat_user',
+    host: process.env.DB_HOST,
+    port: process.env.DB_PORT,
+    database: process.env.DB_NAME,
+    user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     max: 20,
     idleTimeoutMillis: 30000,

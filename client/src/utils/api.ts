@@ -1,6 +1,12 @@
 import axios from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+// Get API URL (set at build-time via Docker build args)
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
+// Validate that API URL is available
+if (!API_URL) {
+    throw new Error('❌ FEHLER: NEXT_PUBLIC_API_URL Umgebungsvariable ist nicht gesetzt!\n   Bitte setze NEXT_PUBLIC_API_URL in der .env Datei (z.B. NEXT_PUBLIC_API_URL=http://localhost/api)');
+}
 
 const api = axios.create({
   baseURL: API_URL,
@@ -49,6 +55,7 @@ export interface Issue {
   resolved_at?: string;
   vote_count: number;
   has_attachment?: boolean;
+  has_voted?: boolean;
 }
 
 export interface IssueSubmission {
@@ -207,14 +214,6 @@ export const submitIssue = async (issueData: IssueSubmission): Promise<{
 };
 
 // Voting APIs
-export const getVoteStatus = async (issueId: number): Promise<{
-  hasVoted: boolean;
-  voteCount: number;
-}> => {
-  const response = await api.get(`/votes/${issueId}/status`);
-  return response.data;
-};
-
 export const voteForIssue = async (issueId: number): Promise<{
   message: string;
   voteCount: number;

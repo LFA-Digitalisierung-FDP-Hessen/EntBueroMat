@@ -4,9 +4,9 @@
   "description": "Frontend client for EntBüroMat",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p $NEXT_PORT",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -p $NEXT_PORT",
     "lint": "next lint"
   },
   "dependencies": {

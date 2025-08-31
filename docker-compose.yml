@@ -22,7 +22,7 @@ services:
       database:
         condition: service_healthy
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=${NODE_ENV}
       - DB_HOST=database
       - DB_PORT=${DB_PORT}
       - DB_NAME=${DB_NAME}
@@ -37,27 +37,34 @@ services:
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
       - ADMIN_USERNAME=${ADMIN_USERNAME}
       - BASE_URL=${BASE_URL}
+      - PORT=${PORT}
+      - NEXT_PORT=${NEXT_PORT}
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
     ports:
-      - "3001:3001"
+      - "${PORT}:${PORT}"
     restart: unless-stopped
     volumes:
       - ./uploads:/app/uploads
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:3001/health || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:${PORT}/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
 
   client:
-    build: ./client
+    build: 
+      context: ./client
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
     depends_on:
       server:
         condition: service_healthy
     environment:
-      - NEXT_PUBLIC_API_URL=${BASE_URL}/api
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+      - NEXT_PORT=${NEXT_PORT}
     ports:
-      - "3000:3000"
+      - "${NEXT_PORT}:${NEXT_PORT}"
     restart: unless-stopped
 
   nginx:
@@ -65,6 +72,9 @@ services:
     depends_on:
       - client
       - server
+    environment:
+      - PORT=${PORT}
+      - NEXT_PORT=${NEXT_PORT}
     ports:
       - "80:80"
       - "443:443"

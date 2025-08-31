@@ -53,6 +53,12 @@ router.get('/top-issues', async (req, res) => {
     try {
         const { limit = 10 } = req.query;
         
+        // Create user identifier for vote status
+        const crypto = require('crypto');
+        const ip = req.ip || req.connection.remoteAddress;
+        const userAgent = req.get('User-Agent') || '';
+        const userIdentifier = crypto.createHash('sha256').update(ip + userAgent).digest('hex');
+        
         const topIssuesQuery = `
             SELECT 
                 i.id,
@@ -63,16 +69,18 @@ router.get('/top-issues', async (req, res) => {
                 i.status,
                 i.created_at,
                 i.resolved_at,
-                COUNT(v.id) as vote_count
+                COUNT(v.id) as vote_count,
+                CASE WHEN uv.id IS NOT NULL THEN true ELSE false END as has_voted
             FROM issues i
             LEFT JOIN votes v ON i.id = v.issue_id
+            LEFT JOIN votes uv ON i.id = uv.issue_id AND uv.user_identifier = $2
             WHERE i.approved_at IS NOT NULL
-            GROUP BY i.id
-            ORDER BY vote_count DESC, i.created_at DESC
+            GROUP BY i.id, uv.id
+            ORDER BY COUNT(v.id) DESC, i.created_at DESC
             LIMIT $1
         `;
 
-        const result = await query(topIssuesQuery, [limit]);
+        const result = await query(topIssuesQuery, [limit, userIdentifier]);
         
         // Truncate description for preview
         const issues = result.rows.map(issue => ({

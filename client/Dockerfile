@@ -13,6 +13,10 @@ RUN npm install
 # Copy source code
 COPY . .
 
+# Accept build args and set as environment variables for build
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+
 # Build the application
 RUN npm run build
 
@@ -37,7 +41,7 @@ RUN adduser -S nextjs -u 1001
 
 USER nextjs
 
-EXPOSE 3000
+EXPOSE $NEXT_PORT
 
 ENV NODE_ENV production
 

@@ -110,6 +110,9 @@ router.get('/', async (req, res) => {
         const finalSort = allowedSorts.includes(sort) ? sort : 'created_at';
         const finalOrder = allowedOrders.includes(order.toUpperCase()) ? order.toUpperCase() : 'DESC';
 
+        // Create user identifier for vote status
+        const userIdentifier = createUserIdentifier(req);
+
         const issuesQuery = `
             SELECT 
                 i.id,
@@ -123,16 +126,18 @@ router.get('/', async (req, res) => {
                 i.updated_at,
                 i.resolved_at,
                 COUNT(v.id) as vote_count,
-                CASE WHEN i.attachment_path IS NOT NULL THEN true ELSE false END as has_attachment
+                CASE WHEN i.attachment_path IS NOT NULL THEN true ELSE false END as has_attachment,
+                CASE WHEN uv.id IS NOT NULL THEN true ELSE false END as has_voted
             FROM issues i
             LEFT JOIN votes v ON i.id = v.issue_id
+            LEFT JOIN votes uv ON i.id = uv.issue_id AND uv.user_identifier = $${++paramCount}
             ${whereClause}
-            GROUP BY i.id
-            ORDER BY ${finalSort === 'vote_count' ? 'vote_count' : 'i.' + finalSort} ${finalOrder}
+            GROUP BY i.id, uv.id
+            ORDER BY ${finalSort === 'vote_count' ? 'COUNT(v.id)' : 'i.' + finalSort} ${finalOrder}
             LIMIT $${++paramCount} OFFSET $${++paramCount}
         `;
 
-        queryParams.push(limit, offset);
+        queryParams.push(userIdentifier, limit, offset);
 
         const countQuery = `
             SELECT COUNT(*) as total
@@ -142,7 +147,7 @@ router.get('/', async (req, res) => {
 
         const [issuesResult, countResult] = await Promise.all([
             query(issuesQuery, queryParams),
-            query(countQuery, queryParams.slice(0, -2)) // Remove limit and offset for count
+            query(countQuery, queryParams.slice(0, -3)) // Remove userIdentifier, limit, and offset for count
         ]);
 
         const total = parseInt(countResult.rows[0].total);
@@ -169,13 +174,16 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
     try {
         const { id } = req.params;
+        const userIdentifier = createUserIdentifier(req);
 
         const issueQuery = `
             SELECT 
                 i.*,
-                COUNT(v.id) as vote_count
+                COUNT(DISTINCT v.id) as vote_count,
+                CASE WHEN MAX(CASE WHEN uv.user_identifier = $2 THEN 1 ELSE 0 END) = 1 THEN true ELSE false END as has_voted
             FROM issues i
             LEFT JOIN votes v ON i.id = v.issue_id
+            LEFT JOIN votes uv ON i.id = uv.issue_id
             WHERE i.id = $1 AND i.approved_at IS NOT NULL
             GROUP BY i.id
         `;
@@ -188,7 +196,7 @@ router.get('/:id', async (req, res) => {
         `;
 
         const [issueResult, updatesResult] = await Promise.all([
-            query(issueQuery, [id]),
+            query(issueQuery, [id, userIdentifier]),
             query(updatesQuery, [id])
         ]);
 

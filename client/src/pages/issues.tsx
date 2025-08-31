@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useQuery } from 'react-query';
-import { getIssues, getCategories, voteForIssue, removeVote, getVoteStatus } from '../utils/api';
+import { getIssues, getCategories, voteForIssue, removeVote } from '../utils/api';
 import type { Issue } from '../utils/api';
 import toast, { Toaster } from 'react-hot-toast';
 import Footer from '../components/Footer';
@@ -51,38 +51,19 @@ export default function IssuesPage() {
     }
   );
 
-  // Load vote statuses for visible issues with delay to prevent rate limiting
+  // Initialize vote statuses from issue data (no more separate API calls needed!)
   useEffect(() => {
     if (issuesData?.issues) {
-      const loadVoteStatuses = async () => {
-        const newStatuses: VoteStatus = {};
-        
-        // Load statuses with 150ms delay between calls to prevent rate limiting
-        for (let i = 0; i < issuesData.issues.length; i++) {
-          const issue = issuesData.issues[i];
-          try {
-            // Add delay between requests
-            if (i > 0) {
-              await new Promise(resolve => setTimeout(resolve, 150));
-            }
-            const status = await getVoteStatus(issue.id);
-            newStatuses[issue.id] = status;
-          } catch (error) {
-            console.warn(`Failed to load vote status for issue ${issue.id}:`, error);
-            // If vote status can't be loaded, set defaults
-            newStatuses[issue.id] = {
-              hasVoted: false,
-              voteCount: issue.vote_count || 0
-            };
-          }
-        }
-        
-        setVoteStatuses(newStatuses);
-      };
-
-      // Add delay before starting to load vote statuses
-      const timeoutId = setTimeout(loadVoteStatuses, 500);
-      return () => clearTimeout(timeoutId);
+      const newStatuses: VoteStatus = {};
+      
+      issuesData.issues.forEach((issue: Issue) => {
+        newStatuses[issue.id] = {
+          hasVoted: issue.has_voted || false,
+          voteCount: issue.vote_count || 0
+        };
+      });
+      
+      setVoteStatuses(newStatuses);
     }
   }, [issuesData?.issues]);
 
@@ -92,6 +73,18 @@ export default function IssuesPage() {
       [filterName]: value
     }));
     setCurrentPage(1); // Reset to first page when filtering
+  };
+
+  const handleSortChange = (sortValue: string) => {
+    const lastUnderscoreIndex = sortValue.lastIndexOf('_');
+    const sort = sortValue.substring(0, lastUnderscoreIndex);
+    const order = sortValue.substring(lastUnderscoreIndex + 1);
+    setFilters(prev => ({
+      ...prev,
+      sort,
+      order: order as 'ASC' | 'DESC'
+    }));
+    setCurrentPage(1); // Reset to first page when sorting
   };
 
   const handleVote = async (issueId: number) => {
@@ -119,6 +112,9 @@ export default function IssuesPage() {
         }));
         toast.success('Stimme abgegeben!');
       }
+      
+      // Refresh issues data to stay in sync with backend
+      refetch();
     } catch (error) {
       toast.error('Fehler beim Abstimmen');
     }
@@ -268,11 +264,7 @@ export default function IssuesPage() {
                   <label className="filter-label">Sortieren</label>
                   <select
                     value={`${filters.sort}_${filters.order}`}
-                    onChange={(e) => {
-                      const [sort, order] = e.target.value.split('_');
-                      handleFilterChange('sort', sort);
-                      handleFilterChange('order', order);
-                    }}
+                    onChange={(e) => handleSortChange(e.target.value)}
                     className="filter-select"
                   >
                     <option value="created_at_DESC">Neueste zuerst</option>

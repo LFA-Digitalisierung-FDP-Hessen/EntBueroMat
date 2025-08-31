@@ -46,4 +46,4 @@ The 500 errors should disappear and the website should load properly.
 ## Admin Login
 - Username: `admin`
 - Password: `admin123`
-- URL: `http://localhost:3000/admin` 
+- URL: `${BASE_URL}/admin` (default is `http://localhost:3000/admin` in development) 

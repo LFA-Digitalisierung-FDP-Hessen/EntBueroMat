@@ -108,9 +108,23 @@ docker-compose down
 
 #### Backend Setup
 
+**Wichtig:** Für lokale Entwicklung müssen Sie die Umgebungsvariablen direkt setzen, da keine .env Datei geladen wird.
+
 \`\`\`bash
 cd server
 npm install
+
+# Umgebungsvariablen für lokale Entwicklung setzen
+export PORT=3001
+export NEXT_PORT=3000
+export BASE_URL=http://localhost:3000
+export NEXT_PUBLIC_API_URL=http://localhost:3001/api
+export DB_HOST=localhost
+export DB_PORT=5432
+export DB_NAME=entbueromat
+export DB_USER=entbueromat_user
+export DB_PASSWORD=ihr_passwort
+
 npm run db:migrate  # Datenbank initialisieren
 npm run dev         # Entwicklungsserver starten
 \`\`\`

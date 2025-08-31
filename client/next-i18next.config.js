@@ -3,9 +3,9 @@ module.exports = {
     defaultLocale: 'de',
     locales: ['de'],
     localeDetection: false,
-    fallbackLng: {
-      default: ['de'],
-    },
+  },
+  fallbackLng: {
+    default: ['de'],
   },
   localePath: './public/locales',
 }; 

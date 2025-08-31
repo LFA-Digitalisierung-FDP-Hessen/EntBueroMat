@@ -6,10 +6,7 @@ const nextConfig = {
   swcMinify: true,
   i18n,
   
-  // Environment variables available to the client
-  env: {
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api',
-  },
+  // NEXT_PUBLIC_* variables are automatically available to the client
 
   // Image optimization
   images: {

@@ -231,11 +231,6 @@ export default function Home() {
           color: var(--fdp-black);
         }
 
-        .benefit-icon {
-          font-size: 24px;
-          margin-bottom: 4px;
-        }
-
         @media (max-width: 768px) {
           .quick-form-container {
             margin: 0 20px;

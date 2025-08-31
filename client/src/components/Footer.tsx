@@ -23,7 +23,7 @@ export default function Footer() {
             <h3>Rechtliches</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <Link href="/privacy">Datenschutz</Link>
-              <Link href="/imprint">Impressum</Link>
+              <Link href="https://www.fdp-darmstadt.de/impressum">Impressum</Link>
               <Link href="/contact">Kontakt</Link>
             </div>
           </div>

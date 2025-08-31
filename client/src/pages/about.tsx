@@ -21,7 +21,7 @@ export default function About() {
         <section className="section" style={{ paddingTop: '40px', paddingBottom: '40px' }}>
           <div className="container">
             <h1 className="section-title">Über uns</h1>
-            <p>
+            <p style={{ textAlign: 'center' }}>
               <b>EntBüro-Mat – Eine Initiative der FDP Hessen</b>
             </p>
             <p className="section-description">
@@ -83,7 +83,7 @@ export default function About() {
           </h2>
           <div className="about-grid">
             <div className="mission-card">
-              <div className="text-4xl mb-4">⚡</div>
+              <div className="text-4xl mb-4 benefit-icon">⚡</div>
               <h3 className="text-xl font-bold mb-3" style={{ color: 'var(--fdp-magenta)' }}>
                 Effizienz
               </h3>
@@ -92,7 +92,7 @@ export default function About() {
               </p>
             </div>
             <div className="mission-card">
-              <div className="text-4xl mb-4">🎯</div>
+              <div className="text-4xl mb-4 benefit-icon">🎯</div>
               <h3 className="text-xl font-bold mb-3" style={{ color: 'var(--fdp-magenta)' }}>
                 Transparenz
               </h3>
@@ -101,7 +101,7 @@ export default function About() {
               </p>
             </div>
             <div className="mission-card">
-              <div className="text-4xl mb-4">🤝</div>
+              <div className="text-4xl mb-4 benefit-icon">🤝</div>
               <h3 className="text-xl font-bold mb-3" style={{ color: 'var(--fdp-magenta)' }}>
                 Bürgerbeteiligung
               </h3>

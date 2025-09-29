@@ -88,7 +88,7 @@
   background: white;
   border: 1px solid #e5e7eb;
   border-radius: 12px;
-  padding: 24px;
+  padding: 0 24px 24px 24px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
   position: relative;
@@ -97,6 +97,70 @@
 .issue-card:hover {
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
   transform: translateY(-2px);
+}
+
+/* Issue Title Link Hover Effects */
+.issue-title-link {
+  text-decoration: none;
+  transition: all 0.3s ease;
+  display: block;
+}
+
+.issue-title-link:hover {
+  text-decoration: none;
+}
+
+.issue-title-link:hover .issue-title {
+  color: var(--fdp-magenta) !important;
+}
+
+.issue-title-link:hover .issue-description {
+  color: var(--fdp-magenta) !important;
+}
+
+/* Vote Button Styles */
+.vote-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 20px;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.vote-button:hover {
+  background: var(--fdp-yellow);
+  border-color: var(--fdp-magenta);
+}
+
+.vote-button.voted {
+  background: var(--fdp-yellow) !important;
+  border-color: var(--fdp-magenta) !important;
+  color: var(--fdp-black) !important;
+}
+
+.vote-button.voted .vote-count {
+  color: var(--fdp-black) !important;
+}
+
+.vote-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 20px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #6b7280;
+  cursor: not-allowed;
 }
 
 .issue-header {
@@ -169,8 +233,6 @@
   justify-content: space-between;
   align-items: center;
   margin-top: auto;
-  padding-top: 16px;
-  border-top: 1px solid #f3f4f6;
 }
 
 .votes {
@@ -195,4 +257,104 @@
 .issue-date {
   font-size: 13px;
   color: #9ca3af;
+}
+
+/* Badge Styles - Consolidated from detail view */
+.badge {
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: inline-block;
+}
+
+.badge-category {
+  background: var(--fdp-yellow);
+  color: var(--fdp-black);
+}
+
+.badge-type {
+  background: var(--fdp-magenta);
+  color: white;
+}
+
+.badge-location {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+/* Status Badge Styles */
+.status-badge {
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-family: "field-gothic-no-75-bold-wide", "Inter", sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: white;
+  display: inline-block;
+}
+
+.status-badge.large {
+  padding: 12px 24px;
+  border-radius: 30px;
+  font-size: 14px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Modern Status Bar for Issue Cards */
+.issue-status-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  border-radius: 12px 12px 0 0;
+  z-index: 2;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.issue-status-text {
+  font-family: "field-gothic-no-75-bold-wide", "Inter", sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 12px 0 6px 0;
+  text-align: right;
+  transition: all 0.2s ease;
+}
+
+/* Horizontal Line Component */
+.horizontal-line {
+  width: 100%;
+  height: 0;
+  margin: 20px 0;
+  border-top: solid 1px #d1d5db;
+}
+
+.horizontal-line.thin {
+  margin: 15px 0;
+}
+
+.horizontal-line.thick {
+  height: 2px;
+  background: linear-gradient(to right, var(--fdp-yellow), var(--fdp-magenta), var(--fdp-yellow));
+}
+
+/* Issue Badges Container */
+.issue-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 15px;
+}
+
+.issue-badges.small .badge {
+  padding: 4px 8px;
+  font-size: 10px;
+  border-radius: 12px;
 } 

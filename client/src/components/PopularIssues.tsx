@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useQuery } from 'react-query';
+import Link from 'next/link';
+import { useQuery, useQueryClient } from 'react-query';
 import { getTopIssues, voteForIssue, removeVote } from '../utils/api';
 import toast from 'react-hot-toast';
 
@@ -16,6 +17,7 @@ interface VoteStatus {
 
 export default function PopularIssues({ limit = 3 }: PopularIssuesProps) {
   const [voteStatuses, setVoteStatuses] = useState<VoteStatus>({});
+  const queryClient = useQueryClient();
 
   const { data, isLoading, error } = useQuery(
     ['topIssues', limit],
@@ -63,6 +65,11 @@ export default function PopularIssues({ limit = 3 }: PopularIssuesProps) {
         }));
         toast.success('Stimme abgegeben!');
       }
+      
+      // Query invalidieren um aktuelle Vote-Status zu laden (mit Debounce)
+      setTimeout(() => {
+        queryClient.invalidateQueries(['topIssues', limit]);
+      }, 100);
     } catch (error) {
       toast.error('Fehler beim Abstimmen');
     }
@@ -93,6 +100,8 @@ export default function PopularIssues({ limit = 3 }: PopularIssuesProps) {
         return '#F59E0B'; // orange
       case 'submitted':
         return '#6B7280'; // gray
+      case 'pending_approval':
+        return '#8B5CF6'; // purple
       default:
         return '#6B7280';
     }
@@ -106,10 +115,14 @@ export default function PopularIssues({ limit = 3 }: PopularIssuesProps) {
         return 'In Bearbeitung';
       case 'submitted':
         return 'Eingereicht';
+      case 'pending_approval':
+        return 'Warten auf Genehmigung';
       default:
         return status;
     }
   };
+
+
 
   const getCategoryLabel = (category: string) => {
     const categoryMap: Record<string, string> = {
@@ -132,39 +145,57 @@ export default function PopularIssues({ limit = 3 }: PopularIssuesProps) {
       <div className="popular-issues">
         {data.issues.map((issue) => (
           <div key={issue.id} className="issue-card">
-            <div className="issue-header">
-              <div className="issue-meta">
-                <span className="issue-category">
-                  {getCategoryLabel(issue.category)}
-                </span>
-                {issue.location && (
-                  <span className="issue-location">📍 {issue.location}</span>
-                )}
-              </div>
-              <div 
-                className="issue-status"
-                style={{ 
-                  color: getStatusColor(issue.status),
-                  fontWeight: 'bold'
-                }}
-              >
-                {getStatusText(issue.status)}
-              </div>
+            {/* Moderne Status-Leiste */}
+            <div 
+              className="issue-status-bar"
+              style={{ 
+                background: `linear-gradient(135deg, ${getStatusColor(issue.status)} 0%, ${getStatusColor(issue.status)}90 100%)`
+              }}
+            ></div>
+            
+            {/* Status-Text in eigener Zeile */}
+            <div 
+              className="issue-status-text"
+              style={{ 
+                color: getStatusColor(issue.status)
+              }}
+            >
+              {getStatusText(issue.status)}
             </div>
             
-            <h3 className="issue-title">{issue.title}</h3>
-            <p className="issue-description">
-              {issue.description.length > 150 
-                ? `${issue.description.substring(0, 150)}...` 
-                : issue.description
-              }
-            </p>
+            <Link href={`/issue/${issue.id}`} className="issue-title-link">
+              <h3 className="issue-title">
+                {issue.title}
+              </h3>
+              
+              {/* Badges unter dem Titel */}
+              <div className="issue-badges small">
+                {issue.location && (
+                  <span className="badge badge-location">
+                    📍 {issue.location}
+                  </span>
+                )}
+                <span className="badge badge-category">
+                  {getCategoryLabel(issue.category)}
+                </span>
+              </div>
+              
+              <p className="issue-description">
+                {issue.description.length > 150 
+                  ? `${issue.description.substring(0, 150)}...` 
+                  : issue.description
+                }
+              </p>
+            </Link>
+            
+            <div className="horizontal-line thin"></div>
             
             <div className="issue-stats">
-              <button
-                onClick={() => handleVote(issue.id)}
-                className={`vote-button ${voteStatuses[issue.id]?.hasVoted ? 'voted' : ''}`}
-              >
+              {issue.status !== 'pending_approval' && issue.status !== 'rejected' && (
+                <button
+                  onClick={() => handleVote(issue.id)}
+                  className={`vote-button ${voteStatuses[issue.id]?.hasVoted ? 'voted' : ''}`}
+                >
                 <span className="vote-icon">
                   {voteStatuses[issue.id]?.hasVoted ? '👍' : '👍'}
                 </span>
@@ -172,6 +203,15 @@ export default function PopularIssues({ limit = 3 }: PopularIssuesProps) {
                   {voteStatuses[issue.id]?.voteCount || issue.vote_count || 0} Stimmen
                 </span>
               </button>
+              )}
+              {(issue.status === 'pending_approval' || issue.status === 'rejected') && (
+                <div className="vote-display">
+                  <span className="vote-icon">👍</span>
+                  <span className="vote-count">
+                    {issue.vote_count || 0} Stimmen
+                  </span>
+                </div>
+              )}
               <div className="issue-date">
                 {new Date(issue.created_at).toLocaleDateString('de-DE')}
               </div>
@@ -181,29 +221,16 @@ export default function PopularIssues({ limit = 3 }: PopularIssuesProps) {
       </div>
 
       <style jsx>{`
-        .vote-button {
+
+
+        .issue-title-link {
+          color: inherit;
+        }
+
+        .issue-status-header {
           display: flex;
-          align-items: center;
-          gap: 6px;
-          background: #f9fafb;
-          padding: 6px 12px;
-          border-radius: 20px;
-          border: 1px solid #e5e7eb;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          font-size: 14px;
-          font-weight: 600;
-        }
-
-        .vote-button:hover {
-          background: var(--fdp-yellow);
-          border-color: var(--fdp-magenta);
-        }
-
-        .vote-button.voted {
-          background: var(--fdp-yellow);
-          border-color: var(--fdp-magenta);
-          color: var(--fdp-black);
+          justify-content: flex-end;
+          margin-bottom: 15px;
         }
 
         .vote-icon {

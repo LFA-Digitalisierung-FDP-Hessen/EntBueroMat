@@ -5,6 +5,8 @@ import { useRouter } from 'next/router';
 import { useQuery } from 'react-query';
 import { submitIssue, getCategories } from '../utils/api';
 import toast, { Toaster } from 'react-hot-toast';
+import SuccessModal from '../components/SuccessModal';
+import Header from '../components/Header';
 
 export default function MeldenPage() {
   const router = useRouter();
@@ -24,6 +26,7 @@ export default function MeldenPage() {
 
   const [attachment, setAttachment] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   // Fetch categories
   const { data: categoriesData } = useQuery('categories', getCategories);
@@ -39,8 +42,8 @@ export default function MeldenPage() {
         return;
       }
       
-      if (!formData.description.trim() || formData.description.trim().length < 20) {
-        toast.error('Beschreibung muss mindestens 20 Zeichen lang sein');
+                    if (!formData.description.trim() || formData.description.trim().length < 50) {
+        toast.error('Beschreibung muss mindestens 50 Zeichen lang sein');
         return;
       }
       
@@ -54,12 +57,28 @@ export default function MeldenPage() {
         return;
       }
 
+      // Validate location for communal issues
+      if (formData.issue_type === 'communal' && !formData.location.trim()) {
+        toast.error('Bei kommunalen Problemen ist die Ortsangabe verpflichtend');
+        return;
+      }
+
+      // Set automatic location defaults for state and federal levels
+      let finalLocation = formData.location.trim();
+      if (!finalLocation) {
+        if (formData.issue_type === 'state') {
+          finalLocation = 'Hessen';
+        } else if (formData.issue_type === 'federal') {
+          finalLocation = 'Deutschland';
+        }
+      }
+
       // Prepare clean submission data
       const submissionData = {
         title: formData.title.trim(),
         description: formData.description.trim(),
         category: formData.category,
-        location: formData.location.trim() || undefined,
+        location: finalLocation,
         issue_type: formData.issue_type,
         is_anonymous: formData.is_anonymous,
         submitter_name: formData.is_anonymous ? undefined : formData.submitter_name.trim(),
@@ -71,10 +90,9 @@ export default function MeldenPage() {
       console.log('Submitting data:', submissionData);
       
       await submitIssue(submissionData);
-      toast.success('Ihre Meldung wurde erfolgreich eingereicht und wird nach Prüfung veröffentlicht!');
       
-      // Redirect to issues page immediately after successful submission
-      router.push('/issues');
+      // Show success modal instead of toast and redirect
+      setShowSuccessModal(true);
       
     } catch (error: any) {
       console.error('Error:', error);
@@ -108,6 +126,30 @@ export default function MeldenPage() {
     }
   };
 
+  const handleCloseSuccessModal = () => {
+    setShowSuccessModal(false);
+    router.push('/issues');
+  };
+
+  const handleSubmitAnother = () => {
+    setShowSuccessModal(false);
+    // Reset form
+    setFormData({
+      title: '',
+      description: '',
+      category: '',
+      location: '',
+      issue_type: 'communal' as 'communal' | 'state' | 'federal',
+      is_anonymous: true,
+      submitter_name: '',
+      submitter_email: '',
+      submitter_contact: ''
+    });
+    setAttachment(null);
+    // Scroll to top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   return (
     <>
       <Head>
@@ -117,20 +159,7 @@ export default function MeldenPage() {
       </Head>
 
       {/* Header */}
-      <header>
-        <div className="container">
-          <div className="header-content">
-            <Link href="/" className="logo">
-              EntBüro-Mat
-            </Link>
-            <nav className="nav-links">
-              <Link href="/">Startseite</Link>
-              <Link href="/issues">Meldungen</Link>
-              <Link href="/about">Über uns</Link>
-            </nav>
-          </div>
-        </div>
-      </header>
+      <Header />
 
       {/* Main Content */}
       <main>
@@ -179,11 +208,11 @@ export default function MeldenPage() {
                     className="form-textarea"
                     required
                     placeholder="Beschreiben Sie das Problem ausführlich... Was ist passiert? Wann und wo? Welche Auswirkungen hatte es?"
-                    minLength={20}
+                    minLength={50}
                     maxLength={5000}
                     rows={8}
                   ></textarea>
-                  <small className="form-help">Mindestens 20 Zeichen, maximal 5000 Zeichen</small>
+                  <small className="form-help">Mindestens 50 Zeichen, maximal 5000 Zeichen</small>
                 </div>
 
                 <div className="form-group">
@@ -205,20 +234,6 @@ export default function MeldenPage() {
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">Ort (optional)</label>
-                  <input
-                    type="text"
-                    name="location"
-                    value={formData.location}
-                    onChange={handleChange}
-                    className="form-input"
-                    placeholder="z.B. Frankfurt, Wiesbaden, Kassel..."
-                    maxLength={255}
-                  />
-                  <small className="form-help">Hilft bei der Zuordnung zur zuständigen Stelle</small>
-                </div>
-
-                <div className="form-group">
                   <label className="form-label">Zuständigkeitsebene *</label>
                   <select
                     name="issue_type"
@@ -233,6 +248,40 @@ export default function MeldenPage() {
                     <option value="federal">Bundesebene</option>
                   </select>
                   <small className="form-help">Wer ist Ihrer Einschätzung nach zuständig?</small>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">
+                    Ort {formData.issue_type === 'communal' ? '*' : '(optional)'}
+                  </label>
+                  <input
+                    type="text"
+                    name="location"
+                    value={formData.location}
+                    onChange={handleChange}
+                    className="form-input"
+                    placeholder={
+                      formData.issue_type === 'communal' 
+                        ? "z.B. Frankfurt, Wiesbaden, Kassel..." 
+                        : formData.issue_type === 'state'
+                        ? "z.B. Frankfurt, Wiesbaden (optional - wenn leer, wird 'Hessen' verwendet)"
+                        : formData.issue_type === 'federal'
+                        ? "z.B. Frankfurt, Wiesbaden (optional - wenn leer, wird 'Deutschland' verwendet)"
+                        : "z.B. Frankfurt, Wiesbaden, Kassel..."
+                    }
+                    maxLength={255}
+                    required={formData.issue_type === 'communal'}
+                  />
+                  <small className="form-help">
+                    {formData.issue_type === 'communal' 
+                      ? 'Ortsangabe ist bei kommunalen Problemen verpflichtend'
+                      : formData.issue_type === 'state'
+                      ? 'Bei Landesproblemen ohne Ortsangabe wird automatisch "Hessen" verwendet'
+                      : formData.issue_type === 'federal'
+                      ? 'Bei Bundesproblemen ohne Ortsangabe wird automatisch "Deutschland" verwendet'
+                      : 'Hilft bei der Zuordnung zur zuständigen Stelle'
+                    }
+                  </small>
                 </div>
 
                 <div className="form-group">
@@ -386,6 +435,12 @@ export default function MeldenPage() {
       </footer>
 
       <Toaster position="top-right" />
+
+      <SuccessModal 
+        isOpen={showSuccessModal}
+        onClose={handleCloseSuccessModal}
+        onSubmitAnother={handleSubmitAnother}
+      />
 
       <style jsx>{`
         .form-help {

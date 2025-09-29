@@ -22,6 +22,9 @@ require('./services/emailScheduler');
 
 const app = express();
 
+// Trust proxy for nginx reverse proxy
+app.set('trust proxy', 1);
+
 // Validate required environment variables
 const requiredEnvVars = [
     { name: 'PORT', example: '3001', description: 'Server-Port' },
@@ -66,21 +69,21 @@ app.use(helmet({
 // Rate limiting - more lenient for general API usage
 const generalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 1000, // increased from 100 to 1000 requests per windowMs
+    max: 3000, // increased by 200% (from 1000 to 3000) requests per windowMs
     message: 'Too many requests from this IP, please try again later.'
 });
 
 // Stricter rate limiting for submissions
 const submitLimiter = rateLimit({
     windowMs: 60 * 60 * 1000, // 1 hour
-    max: 10, // increased from 5 to 10 submissions per hour
+    max: 30, // increased by 200% (from 10 to 30) submissions per hour
     message: 'Too many submissions from this IP, please try again later.'
 });
 
 // Very lenient rate limiting for vote status checks
 const voteLimiter = rateLimit({
     windowMs: 1 * 60 * 1000, // 1 minute
-    max: 100, // 100 requests per minute for vote status
+    max: 300, // increased by 200% (from 100 to 300) requests per minute for vote status
     message: 'Too many vote requests from this IP, please try again later.'
 });
 
@@ -149,8 +152,14 @@ app.use('/api/admin', adminRouter);
 app.use('/api/public', publicRouter);
 app.use('/api/status', statusRouter);
 
-// Apply stricter rate limiting to submissions (this goes after general to override)
-app.use('/api/issues', submitLimiter, issuesRouter);
+// Apply stricter rate limiting only to POST requests (new issue submissions)
+app.use('/api/issues', (req, res, next) => {
+    if (req.method === 'POST') {
+        submitLimiter(req, res, next);
+    } else {
+        next();
+    }
+}, issuesRouter);
 
 // Error handling middleware
 app.use((error, req, res, next) => {

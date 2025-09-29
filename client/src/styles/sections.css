@@ -12,6 +12,10 @@
   color: var(--fdp-magenta);
 }
 
+h3.section-title {
+  margin-bottom: 1em;
+}
+
 /* Hero Section */
 .hero {
   background: linear-gradient(135deg, var(--fdp-yellow) 0%, var(--fdp-magenta) 100%);
@@ -50,7 +54,7 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 40px;
-  margin: 60px 0;
+  margin: 3rem 0 3rem 0;
 }
 
 .stat-item {

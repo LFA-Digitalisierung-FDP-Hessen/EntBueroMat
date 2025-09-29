@@ -4,11 +4,10 @@ const path = require('path');
 const fs = require('fs').promises;
 const { v4: uuidv4 } = require('uuid');
 const Joi = require('joi');
-const crypto = require('crypto');
-
 const { query } = require('../database/db');
 const { assignFDPDivision, notifyFDPDivision } = require('../services/emailService');
 const { authenticateAdmin } = require('../middleware/auth');
+const { createUserIdentifier } = require('../utils/userIdentifier');
 
 const router = express.Router();
 
@@ -50,12 +49,16 @@ const upload = multer({
 // Validation schemas
 const issueSchema = Joi.object({
     title: Joi.string().min(10).max(255).required(),
-    description: Joi.string().min(20).max(5000).required(),
+    description: Joi.string().min(50).max(5000).required(),
     category: Joi.string().valid(
         'general', 'construction', 'healthcare', 'municipal', 'taxation', 
         'education', 'environment', 'transport', 'business', 'other'
     ).required(),
-    location: Joi.string().max(255).optional(),
+    location: Joi.string().max(255).when('issue_type', {
+        is: 'communal',
+        then: Joi.string().min(2).required(),
+        otherwise: Joi.string().optional()
+    }),
     issue_type: Joi.string().valid('communal', 'state', 'federal').required(),
     is_anonymous: Joi.boolean().default(false),
     submitter_name: Joi.string().max(255).when('is_anonymous', { is: false, then: Joi.required() }),
@@ -63,14 +66,9 @@ const issueSchema = Joi.object({
     submitter_contact: Joi.string().max(255).optional()
 });
 
-// Create user identifier for anonymous voting
-function createUserIdentifier(req) {
-    const ip = req.ip || req.connection.remoteAddress;
-    const userAgent = req.get('User-Agent') || '';
-    return crypto.createHash('sha256').update(ip + userAgent).digest('hex');
-}
 
-// GET /api/issues - Get all approved issues with pagination and filtering
+
+// GET /api/issues - Unified endpoint for all issues with pagination and filtering
 router.get('/', async (req, res) => {
     try {
         const {
@@ -78,40 +76,85 @@ router.get('/', async (req, res) => {
             limit = 20,
             category,
             status,
+            approved,
             sort = 'created_at',
             order = 'DESC',
-            search
+            search,
+            location
         } = req.query;
 
-        const offset = (page - 1) * limit;
-        let whereClause = 'WHERE approved_at IS NOT NULL';
+        const offset = (parseInt(page) - 1) * parseInt(limit);
+        let whereClause = 'WHERE 1=1';
         const queryParams = [];
         let paramCount = 0;
 
+        // Check if user is admin
+        const authHeader = req.get('Authorization');
+        const isAdmin = authHeader && authHeader.startsWith('Bearer ');  // TODO: Verify actual Bearer token
+        
+        // Admin can see all issues, public users only see approved issues
+        if (!isAdmin) {
+            whereClause += ' AND status != \'pending_approval\'';
+        }
+
         // Add filters
-        if (category) {
+        if (category && category.trim()) {
             whereClause += ` AND category = $${++paramCount}`;
-            queryParams.push(category);
+            queryParams.push(category.toString());
         }
 
-        if (status) {
+        if (status && status.trim()) {
             whereClause += ` AND status = $${++paramCount}`;
-            queryParams.push(status);
+            queryParams.push(status.toString());
         }
 
-        if (search) {
+        // Admin-specific approved filter
+        if (isAdmin && approved) {
+            if (approved === 'pending') {
+                whereClause += ' AND status = \'pending_approval\'';
+            } else if (approved === 'approved') {
+                whereClause += ' AND status != \'pending_approval\'';
+            }
+        }
+
+        if (search && search.trim()) {
             whereClause += ` AND (title ILIKE $${++paramCount} OR description ILIKE $${++paramCount})`;
             queryParams.push(`%${search}%`, `%${search}%`);
         }
 
+        if (location && location.trim()) {
+            whereClause += ` AND location ILIKE $${++paramCount}`;
+            queryParams.push(`%${location}%`);
+        }
+
         // Validate sort and order
-        const allowedSorts = ['created_at', 'updated_at', 'vote_count', 'title'];
+        const allowedSorts = ['created_at', 'updated_at', 'vote_count', 'title', 'status'];
         const allowedOrders = ['ASC', 'DESC'];
         const finalSort = allowedSorts.includes(sort) ? sort : 'created_at';
         const finalOrder = allowedOrders.includes(order.toUpperCase()) ? order.toUpperCase() : 'DESC';
 
-        // Create user identifier for vote status
+        // Create user identifier for vote status (for all users)
         const userIdentifier = createUserIdentifier(req);
+        
+        // Admin gets additional fields
+        const adminFields = isAdmin ? `
+                i.approved_at,
+                i.rejected_at,
+                i.is_anonymous,
+                i.submitter_name,
+                i.submitter_email,
+                i.attachment_path,` : '';
+
+        // Vote handling for all users (admin and public)
+        const voteJoin = `
+            LEFT JOIN votes uv ON i.id = uv.issue_id AND uv.user_identifier = $${++paramCount}`;
+        
+        const voteField = `
+                CASE WHEN uv.id IS NOT NULL THEN true ELSE false END as has_voted`;
+
+        if (userIdentifier) {
+            queryParams.push(userIdentifier);
+        }
 
         const issuesQuery = `
             SELECT 
@@ -124,20 +167,18 @@ router.get('/', async (req, res) => {
                 i.status,
                 i.created_at,
                 i.updated_at,
-                i.resolved_at,
+                i.resolved_at,${adminFields}
                 COUNT(v.id) as vote_count,
-                CASE WHEN i.attachment_path IS NOT NULL THEN true ELSE false END as has_attachment,
-                CASE WHEN uv.id IS NOT NULL THEN true ELSE false END as has_voted
+                CASE WHEN i.attachment_path IS NOT NULL THEN true ELSE false END as has_attachment${voteField ? ',' + voteField : ''}
             FROM issues i
-            LEFT JOIN votes v ON i.id = v.issue_id
-            LEFT JOIN votes uv ON i.id = uv.issue_id AND uv.user_identifier = $${++paramCount}
+            LEFT JOIN votes v ON i.id = v.issue_id${voteJoin}
             ${whereClause}
             GROUP BY i.id, uv.id
             ORDER BY ${finalSort === 'vote_count' ? 'COUNT(v.id)' : 'i.' + finalSort} ${finalOrder}
             LIMIT $${++paramCount} OFFSET $${++paramCount}
         `;
 
-        queryParams.push(userIdentifier, limit, offset);
+        queryParams.push(parseInt(limit), offset);
 
         const countQuery = `
             SELECT COUNT(*) as total
@@ -145,9 +186,23 @@ router.get('/', async (req, res) => {
             ${whereClause}
         `;
 
+        // Prepare count query parameters (exclude userIdentifier, limit, and offset)
+        const countParams = queryParams.slice(0, -2); // Remove limit and offset
+        if (userIdentifier) {
+            countParams.pop(); // Also remove userIdentifier for count query
+        }
+
+        // Debug logging for development
+        if (process.env.NODE_ENV === 'development') {
+            console.log('Generated SQL Query:', issuesQuery);
+            console.log('Query Parameters:', queryParams);
+            console.log('Count Query:', countQuery);
+            console.log('Count Parameters:', countParams);
+        }
+
         const [issuesResult, countResult] = await Promise.all([
             query(issuesQuery, queryParams),
-            query(countQuery, queryParams.slice(0, -3)) // Remove userIdentifier, limit, and offset for count
+            query(countQuery, countParams)
         ]);
 
         const total = parseInt(countResult.rows[0].total);
@@ -166,7 +221,27 @@ router.get('/', async (req, res) => {
         });
     } catch (error) {
         console.error('Error fetching issues:', error);
-        res.status(500).json({ error: 'Failed to fetch issues' });
+        
+        // Provide more detailed error information
+        let errorMessage = 'Failed to fetch issues';
+        let statusCode = 500;
+        
+        if (error.code === '42601') {
+            errorMessage = 'SQL syntax error - please contact support';
+            statusCode = 500;
+        } else if (error.code === '42P18') {
+            errorMessage = 'Database parameter error - please try again';
+            statusCode = 400;
+        } else if (error.code === 'ECONNREFUSED') {
+            errorMessage = 'Database connection failed - please try again later';
+            statusCode = 503;
+        }
+        
+        res.status(statusCode).json({ 
+            error: errorMessage,
+            code: error.code,
+            details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
     }
 });
 
@@ -176,6 +251,15 @@ router.get('/:id', async (req, res) => {
         const { id } = req.params;
         const userIdentifier = createUserIdentifier(req);
 
+        // Check if user is admin to show pending approval issues
+        const authHeader = req.get('Authorization');
+        const isAdmin = authHeader && authHeader.startsWith('Bearer ');
+        
+        // Build WHERE clause based on admin status
+        const whereClause = isAdmin 
+            ? 'WHERE i.id = $1' // Admins can see all issues
+            : 'WHERE i.id = $1 AND i.status != \'pending_approval\''; // Regular users only see approved issues
+
         const issueQuery = `
             SELECT 
                 i.*,
@@ -184,16 +268,20 @@ router.get('/:id', async (req, res) => {
             FROM issues i
             LEFT JOIN votes v ON i.id = v.issue_id
             LEFT JOIN votes uv ON i.id = uv.issue_id
-            WHERE i.id = $1 AND i.approved_at IS NOT NULL
+            ${whereClause}
             GROUP BY i.id
         `;
 
-        const updatesQuery = `
-            SELECT id, update_text, updated_by, updater_name, created_at
-            FROM issue_updates
-            WHERE issue_id = $1 AND is_public = true
-            ORDER BY created_at ASC
-        `;
+        // For updates, also consider admin status
+        const updatesQuery = isAdmin 
+            ? `SELECT id, update_text, updated_by, updater_name, created_at, is_public
+               FROM issue_updates
+               WHERE issue_id = $1
+               ORDER BY created_at ASC`
+            : `SELECT id, update_text, updated_by, updater_name, created_at
+               FROM issue_updates
+               WHERE issue_id = $1 AND is_public = true
+               ORDER BY created_at ASC`;
 
         const [issueResult, updatesResult] = await Promise.all([
             query(issueQuery, [id, userIdentifier]),
@@ -242,16 +330,26 @@ router.post('/', upload.single('attachment'), async (req, res) => {
             submitter_contact
         } = value;
 
+        // Set automatic location defaults for state and federal levels
+        let finalLocation = location;
+        if (!finalLocation) {
+            if (issue_type === 'state') {
+                finalLocation = 'Hessen';
+            } else if (issue_type === 'federal') {
+                finalLocation = 'Deutschland';
+            }
+        }
+
         // Generate secure update token
         const secureUpdateToken = uuidv4();
 
-        // Insert issue into database
+        // Insert issue into database with pending_approval status
         const insertQuery = `
             INSERT INTO issues (
                 title, description, category, location, issue_type, 
                 is_anonymous, submitter_name, submitter_email, submitter_contact,
-                secure_update_token, attachment_path
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                secure_update_token, attachment_path, status
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
             RETURNING id, created_at
         `;
 
@@ -259,14 +357,15 @@ router.post('/', upload.single('attachment'), async (req, res) => {
             title,
             description,
             category,
-            location,
+            finalLocation,
             issue_type,
             is_anonymous,
             is_anonymous ? null : submitter_name,
             is_anonymous ? null : submitter_email,
             submitter_contact,
             secureUpdateToken,
-            req.file ? req.file.filename : null
+            req.file ? req.file.filename : null,
+            'pending_approval'
         ];
 
         const result = await query(insertQuery, values);
@@ -336,8 +435,8 @@ router.post('/admin/:id/approve', authenticateAdmin, async (req, res) => {
 
         const approveQuery = `
             UPDATE issues 
-            SET approved_at = CURRENT_TIMESTAMP, admin_notes = $2
-            WHERE id = $1 AND approved_at IS NULL
+            SET status = 'submitted', approved_at = CURRENT_TIMESTAMP, admin_notes = $2
+            WHERE id = $1 AND status = 'pending_approval'
             RETURNING id, title
         `;
 
@@ -370,7 +469,7 @@ router.delete('/admin/:id/reject', authenticateAdmin, async (req, res) => {
 
         const attachmentPath = issueResult.rows[0].attachment_path;
 
-        // Mark the issue as rejected
+        // Mark the issue as rejected (can be done from both pending_approval and submitted status)
         const rejectQuery = `UPDATE issues SET status = 'rejected', rejected_at = CURRENT_TIMESTAMP WHERE id = $1`;
         await query(rejectQuery, [id]);
 
@@ -384,6 +483,39 @@ router.delete('/admin/:id/reject', authenticateAdmin, async (req, res) => {
     } catch (error) {
         console.error('Error rejecting issue:', error);
         res.status(500).json({ error: 'Failed to reject issue' });
+    }
+});
+
+// DELETE /api/issues/admin/:id/delete - Permanently delete an issue (admin only)
+router.delete('/admin/:id/delete', authenticateAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { reason } = req.body;
+
+        // Get issue details first to clean up file
+        const issueQuery = `SELECT attachment_path FROM issues WHERE id = $1`;
+        const issueResult = await query(issueQuery, [id]);
+
+        if (issueResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Issue not found' });
+        }
+
+        const attachmentPath = issueResult.rows[0].attachment_path;
+
+        // Delete the issue (this will cascade to votes and updates)
+        const deleteQuery = `DELETE FROM issues WHERE id = $1`;
+        await query(deleteQuery, [id]);
+
+        // Clean up attachment file if exists
+        if (attachmentPath) {
+            const filePath = path.join(__dirname, '../uploads', attachmentPath);
+            await fs.unlink(filePath).catch(() => {}); // Ignore errors
+        }
+
+        res.json({ message: 'Issue permanently deleted' });
+    } catch (error) {
+        console.error('Error deleting issue:', error);
+        res.status(500).json({ error: 'Failed to delete issue' });
     }
 });
 

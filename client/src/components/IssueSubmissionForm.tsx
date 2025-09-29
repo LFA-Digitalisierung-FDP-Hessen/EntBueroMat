@@ -3,12 +3,14 @@ import { useForm } from 'react-hook-form';
 import { useMutation, useQuery } from 'react-query';
 import { submitIssue, getCategories } from '../utils/api';
 import toast from 'react-hot-toast';
+import SuccessModal from './SuccessModal';
 
 interface FormData {
   title: string;
   description: string;
   category: string;
   location: string;
+  issueType: 'communal' | 'state' | 'federal';
   isAnonymous: boolean;
   contactEmail?: string;
   contactName?: string;
@@ -21,13 +23,16 @@ interface IssueSubmissionFormProps {
 
 export default function IssueSubmissionForm({ onSuccess }: IssueSubmissionFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const { register, handleSubmit, watch, formState: { errors }, reset } = useForm<FormData>({
     defaultValues: {
-      isAnonymous: true
+      isAnonymous: true,
+      issueType: 'communal'
     }
   });
   
   const isAnonymous = watch('isAnonymous');
+  const issueType = watch('issueType');
 
   // Fetch categories from API
   const { data: categoriesData, isLoading: categoriesLoading } = useQuery(
@@ -37,13 +42,7 @@ export default function IssueSubmissionForm({ onSuccess }: IssueSubmissionFormPr
 
   const submitMutation = useMutation(submitIssue, {
     onSuccess: () => {
-      toast('Danke! Ihr Ärger ist angekommen.', {
-        icon: '✅',
-        style: {
-          background: '#10B981',
-          color: 'white',
-        },
-      });
+      setShowSuccessModal(true);
       reset();
       onSuccess?.();
     },
@@ -61,12 +60,22 @@ export default function IssueSubmissionForm({ onSuccess }: IssueSubmissionFormPr
   const onSubmit = async (data: FormData) => {
     setIsSubmitting(true);
     try {
+      // Set automatic location defaults for state and federal levels
+      let finalLocation = data.location.trim();
+      if (!finalLocation) {
+        if (data.issueType === 'state') {
+          finalLocation = 'Hessen';
+        } else if (data.issueType === 'federal') {
+          finalLocation = 'Deutschland';
+        }
+      }
+      
       const submissionData = {
         title: data.title,
         description: data.description,
         category: data.category,
-        location: data.location,
-        issue_type: 'communal' as const, // Default to communal for now
+        location: finalLocation,
+        issue_type: data.issueType,
         is_anonymous: data.isAnonymous,
         submitter_name: data.isAnonymous ? undefined : data.contactName,
         submitter_email: data.isAnonymous ? undefined : data.contactEmail,
@@ -77,6 +86,15 @@ export default function IssueSubmissionForm({ onSuccess }: IssueSubmissionFormPr
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleCloseSuccessModal = () => {
+    setShowSuccessModal(false);
+  };
+
+  const handleSubmitAnother = () => {
+    setShowSuccessModal(false);
+    // Form is already reset by the mutation onSuccess callback
   };
 
   return (
@@ -115,7 +133,7 @@ export default function IssueSubmissionForm({ onSuccess }: IssueSubmissionFormPr
             rows={6}
             {...register('description', { 
               required: 'Bitte beschreiben Sie das Problem',
-              minLength: { value: 20, message: 'Bitte beschreiben Sie das Problem etwas ausführlicher (mindestens 20 Zeichen)' }
+              minLength: { value: 50, message: 'Bitte beschreiben Sie das Problem etwas ausführlicher (mindestens 50 Zeichen)' }
             })}
           />
           {errors.description && (
@@ -146,56 +164,96 @@ export default function IssueSubmissionForm({ onSuccess }: IssueSubmissionFormPr
           )}
         </div>
 
-        {/* Category and Location Row */}
-        <div className="grid md:grid-cols-2 gap-6">
-          <div className="form-group">
-            <label className="form-label" htmlFor="category">
-              <span className="flex items-center">
-                <span className="text-lg mr-2">🏷️</span>
-                Bereich
-              </span>
-            </label>
-            <select
-              id="category"
-              className={`form-select ${errors.category ? 'form-error' : ''}`}
-              {...register('category', { required: 'Bitte wählen Sie einen Bereich aus' })}
-              disabled={categoriesLoading}
-            >
-              <option value="">
-                {categoriesLoading ? 'Laden...' : 'Bereich auswählen...'}
+        {/* Category */}
+        <div className="form-group">
+          <label className="form-label" htmlFor="category">
+            <span className="flex items-center">
+              <span className="text-lg mr-2">🏷️</span>
+              Bereich
+            </span>
+          </label>
+          <select
+            id="category"
+            className={`form-select ${errors.category ? 'form-error' : ''}`}
+            {...register('category', { required: 'Bitte wählen Sie einen Bereich aus' })}
+            disabled={categoriesLoading}
+          >
+            <option value="">
+              {categoriesLoading ? 'Laden...' : 'Bereich auswählen...'}
+            </option>
+            {categoriesData?.categories?.map((category) => (
+              <option key={category.value} value={category.value}>
+                {category.label}
               </option>
-              {categoriesData?.categories?.map((category) => (
-                <option key={category.value} value={category.value}>
-                  {category.label}
-                </option>
-              ))}
-            </select>
-            {errors.category && (
-              <span className="form-error-message">{errors.category.message}</span>
-            )}
-          </div>
+            ))}
+          </select>
+          {errors.category && (
+            <span className="form-error-message">{errors.category.message}</span>
+          )}
+        </div>
 
-          <div className="form-group">
-            <label className="form-label" htmlFor="location">
-              <span className="flex items-center">
-                <span className="text-lg mr-2">📍</span>
-                Ort / Behörde
-              </span>
-            </label>
-            <input
-              id="location"
-              type="text"
-              placeholder="z.B. 'Frankfurt', 'Wiesbaden Bürgeramt' oder 'Landkreis Darmstadt'"
-              className={`form-input ${errors.location ? 'form-error' : ''}`}
-              {...register('location', { 
-                required: 'Bitte geben Sie den Ort oder die Behörde an',
-                minLength: { value: 2, message: 'Bitte geben Sie einen gültigen Ort an' }
-              })}
-            />
-            {errors.location && (
-              <span className="form-error-message">{errors.location.message}</span>
-            )}
-          </div>
+        {/* Issue Type */}
+        <div className="form-group">
+          <label className="form-label" htmlFor="issueType">
+            <span className="flex items-center">
+              <span className="text-lg mr-2">🏛️</span>
+              Zuständigkeitsebene
+            </span>
+          </label>
+          <select
+            id="issueType"
+            className={`form-select ${errors.issueType ? 'form-error' : ''}`}
+            {...register('issueType', { required: 'Bitte wählen Sie eine Zuständigkeitsebene aus' })}
+          >
+            <option value="">Zuständigkeitsebene auswählen...</option>
+            <option value="communal">Kommunal (Stadt/Gemeinde)</option>
+            <option value="state">Landesebene (Hessen)</option>
+            <option value="federal">Bundesebene</option>
+          </select>
+          {errors.issueType && (
+            <span className="form-error-message">{errors.issueType.message}</span>
+          )}
+        </div>
+
+        {/* Location */}
+        <div className="form-group">
+          <label className="form-label" htmlFor="location">
+            <span className="flex items-center">
+              <span className="text-lg mr-2">📍</span>
+              Ort / Behörde {issueType === 'communal' ? '*' : '(optional)'}
+            </span>
+          </label>
+          <input
+            id="location"
+            type="text"
+            placeholder={
+              issueType === 'communal' 
+                ? "z.B. 'Frankfurt', 'Wiesbaden Bürgeramt' oder 'Landkreis Darmstadt'"
+                : issueType === 'state'
+                ? "z.B. Frankfurt, Wiesbaden (optional - wenn leer wird 'Hessen' verwendet)"
+                : issueType === 'federal'
+                ? "z.B. Frankfurt, Wiesbaden (optional - wenn leer wird 'Deutschland' verwendet)"
+                : "z.B. 'Frankfurt', 'Wiesbaden Bürgeramt' oder 'Landkreis Darmstadt'"
+            }
+            className={`form-input ${errors.location ? 'form-error' : ''}`}
+            {...register('location', {
+              required: issueType === 'communal' ? 'Bei kommunalen Problemen ist die Ortsangabe verpflichtend' : false,
+              minLength: issueType === 'communal' ? { value: 2, message: 'Bitte geben Sie einen gültigen Ort an' } : undefined
+            })}
+          />
+          <p className="text-sm text-gray-600 mt-1">
+            {issueType === 'communal' 
+              ? 'Ortsangabe ist bei kommunalen Problemen verpflichtend'
+              : issueType === 'state'
+              ? 'Bei Landesproblemen ohne Ortsangabe wird automatisch "Hessen" verwendet'
+              : issueType === 'federal'
+              ? 'Bei Bundesproblemen ohne Ortsangabe wird automatisch "Deutschland" verwendet'
+              : 'Hilft bei der Zuordnung zur zuständigen Stelle'
+            }
+          </p>
+          {errors.location && (
+            <span className="form-error-message">{errors.location.message}</span>
+          )}
         </div>
 
         {/* File Upload */}
@@ -312,6 +370,12 @@ export default function IssueSubmissionForm({ onSuccess }: IssueSubmissionFormPr
           </p>
         </div>
       </form>
+
+      <SuccessModal 
+        isOpen={showSuccessModal}
+        onClose={handleCloseSuccessModal}
+        onSubmitAnother={handleSubmitAnother}
+      />
     </div>
   );
 } 

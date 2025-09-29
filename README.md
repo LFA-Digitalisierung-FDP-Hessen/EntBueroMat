@@ -211,6 +211,37 @@ Neue Kategorien können in \`server/routes/public.js\` und den Übersetzungsdate
 # Passwort muss mit bcrypt gehashed werden
 \`\`\`
 
+### 🗄️ Datenbank-Verwaltung mit pgAdmin
+
+Für eine einfache Verwaltung der PostgreSQL-Datenbank ist pgAdmin integriert:
+
+**Zugang:**
+- **URL**: \`http://localhost:8080\`
+- **E-Mail**: \`admin@entbuero-mat.de\` (aus .env konfigurierbar)
+- **Passwort**: \`pgadmin123\` (⚠️ **Ändern Sie dies in der Produktion!**)
+
+**Automatische Konfiguration:**
+pgAdmin ist bereits vorkonfiguriert und verbindet sich automatisch mit der EntBüro-Mat-Datenbank. Nach dem Login finden Sie unter "Servers" bereits die Verbindung "EntBüro-Mat Database".
+
+**Manuelle Konfiguration (falls nötig):**
+1. Rechtsklick auf "Servers" → "Register" → "Server"
+2. **General Tab**: Name: \`EntBüro-Mat Database\`
+3. **Connection Tab**:
+   - Host: \`database\` (bei Docker) oder \`localhost\` (lokal)
+   - Port: \`5432\`
+   - Database: \`entbueromat\`
+   - Username: \`entbueromat_user\`
+   - Password: Ihr DB-Passwort aus der .env
+
+**Admin-Passwort einfach ändern:**
+1. pgAdmin öffnen → EntBüro-Mat Database → Schemas → public → Tables → admin_users
+2. Rechtsklick auf \`admin_users\` → "View/Edit Data" → "All Rows"
+3. Neues Passwort mit bcrypt hashen:
+   ```bash
+   node -e "const bcrypt = require('bcryptjs'); console.log(bcrypt.hashSync('NeuesPasswort123!', 12));"
+   ```
+4. \`password_hash\` Feld in pgAdmin aktualisieren
+
 ## 📧 E-Mail-System
 
 ### Automatische Benachrichtigungen

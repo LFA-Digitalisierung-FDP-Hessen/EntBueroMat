@@ -8,7 +8,7 @@ CREATE TABLE issues (
     category VARCHAR(100) NOT NULL,
     location VARCHAR(255),
     issue_type VARCHAR(50) NOT NULL CHECK (issue_type IN ('communal', 'state', 'federal')),
-    status VARCHAR(20) NOT NULL DEFAULT 'submitted' CHECK (status IN ('submitted', 'in_progress', 'resolved', 'rejected')),
+    status VARCHAR(20) NOT NULL DEFAULT 'pending_approval' CHECK (status IN ('pending_approval', 'submitted', 'in_progress', 'resolved', 'rejected')),
     is_anonymous BOOLEAN DEFAULT false,
     submitter_name VARCHAR(255),
     submitter_email VARCHAR(255),

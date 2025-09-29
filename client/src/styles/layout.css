@@ -2,7 +2,7 @@
 header {
   background: var(--fdp-white);
   border-bottom: 3px solid var(--fdp-yellow);
-  padding: 20px 0;
+  padding: 0.5rem 0 0.5rem 0;
 }
 
 .header-content {

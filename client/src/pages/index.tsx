@@ -23,6 +23,11 @@ export default function Home() {
       return;
     }
 
+    if (quickDescription.trim().length < 50) {
+      toast.error('Bitte beschreiben Sie das Problem etwas ausführlicher (mindestens 50 Zeichen)');
+      return;
+    }
+
     // Navigate to full form with pre-filled description
     router.push({
       pathname: '/melden',

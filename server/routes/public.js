@@ -147,7 +147,7 @@ router.get('/categories', async (req, res) => {
             { value: 'general', label: 'Allgemein', labelEn: 'General' },
             { value: 'construction', label: 'Bauwesen', labelEn: 'Construction' },
             { value: 'healthcare', label: 'Gesundheitswesen', labelEn: 'Healthcare' },
-            { value: 'municipal', label: 'Gemeindevorgang', labelEn: 'Municipal' },
+            { value: 'municipal', label: 'Kommunalverwaltung', labelEn: 'Municipal' },
             { value: 'taxation', label: 'Steuerwesen', labelEn: 'Taxation' },
             { value: 'education', label: 'Bildung', labelEn: 'Education' },
             { value: 'environment', label: 'Umwelt', labelEn: 'Environment' },

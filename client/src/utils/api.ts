@@ -49,13 +49,20 @@ export interface Issue {
   category: string;
   location?: string;
   issue_type: 'communal' | 'state' | 'federal';
-  status: 'submitted' | 'in_progress' | 'resolved' | 'rejected';
+  status: 'pending_approval' | 'submitted' | 'in_progress' | 'resolved' | 'rejected';
   created_at: string;
   updated_at: string;
   resolved_at?: string;
+  approved_at?: string;
+  rejected_at?: string;
   vote_count: number;
   has_attachment?: boolean;
   has_voted?: boolean;
+  is_anonymous?: boolean;
+  submitter_name?: string;
+  submitter_email?: string;
+  submitter_contact?: string;
+  admin_notes?: string;
 }
 
 export interface IssueSubmission {
@@ -129,6 +136,7 @@ export const getIssues = async (params?: {
   sort?: string;
   order?: string;
   search?: string;
+  approved?: string; // 'pending', 'approved', 'all' - nur für Admins
 }): Promise<{
   issues: Issue[];
   pagination: {
@@ -140,6 +148,7 @@ export const getIssues = async (params?: {
     hasPrev: boolean;
   };
 }> => {
+  // Verwende den einheitlichen /issues Endpunkt für alle Anfragen
   const response = await api.get('/issues', { params });
   return response.data;
 };
@@ -259,6 +268,98 @@ export const getAdminStats = async (): Promise<{
   issuesByStatus: Array<{ status: string; count: number }>;
 }> => {
   const response = await api.get('/admin/stats');
+  return response.data;
+};
+
+// Admin issue management APIs
+export const approveIssue = async (issueId: number, notes?: string): Promise<{
+  message: string;
+}> => {
+  const response = await api.post(`/issues/admin/${issueId}/approve`, { notes });
+  return response.data;
+};
+
+export const rejectIssue = async (issueId: number, reason?: string): Promise<{
+  message: string;
+}> => {
+  const response = await api.delete(`/issues/admin/${issueId}/reject`, { 
+    data: { reason } 
+  });
+  return response.data;
+};
+
+export const updateIssueStatus = async (issueId: number, status: string, updateText?: string): Promise<{
+  message: string;
+  issue: Issue;
+}> => {
+  const response = await api.put(`/admin/issues/${issueId}/status`, {
+    status,
+    update_text: updateText
+  });
+  return response.data;
+};
+
+export const reactivateIssue = async (issueId: number): Promise<{
+  message: string;
+  issue: Issue;
+}> => {
+  const response = await api.post(`/admin/issues/${issueId}/reactivate`);
+  return response.data;
+};
+
+export const deleteIssue = async (issueId: number, reason?: string): Promise<{
+  message: string;
+}> => {
+  const response = await api.delete(`/issues/admin/${issueId}/delete`, {
+    data: { reason }
+  });
+  return response.data;
+};
+
+// Check if current user is admin
+export const checkAdminStatus = async (): Promise<{
+  isAdmin: boolean;
+  user?: {
+    id: number;
+    username: string;
+    email: string;
+    role: string;
+  };
+}> => {
+  try {
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+      return { isAdmin: false };
+    }
+    
+    const response = await api.get('/admin/me');
+    return { 
+      isAdmin: true, 
+      user: response.data.user 
+    };
+  } catch {
+    // If request fails, user is not admin
+    localStorage.removeItem('auth_token');
+    return { isAdmin: false };
+  }
+};
+
+// Add an update to an issue (admin only)
+export const addIssueUpdate = async (issueId: number, updateText: string, isPublic = true): Promise<{
+  message: string;
+  update: {
+    id: number;
+    update_text: string;
+    updated_by: string;
+    updater_name: string;
+    created_at: string;
+    is_public: boolean;
+  };
+}> => {
+  const response = await api.post(`/admin/issues/${issueId}/update`, {
+    update_text: updateText,
+    is_public: isPublic
+  });
   return response.data;
 };
 

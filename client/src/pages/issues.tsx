@@ -1,8 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
-import { useQuery } from 'react-query';
-import { getIssues, getCategories, voteForIssue, removeVote } from '../utils/api';
+import { useRouter } from 'next/router';
+import { useQuery, useQueryClient } from 'react-query';
+import { 
+  getIssues, 
+  getCategories, 
+  voteForIssue, 
+  removeVote, 
+  checkAdminStatus,
+  approveIssue,
+  rejectIssue,
+  updateIssueStatus,
+  reactivateIssue,
+  deleteIssue
+} from '../utils/api';
 import type { Issue } from '../utils/api';
 import toast, { Toaster } from 'react-hot-toast';
 import Footer from '../components/Footer';
@@ -12,6 +24,7 @@ interface FiltersState {
   category: string;
   status: string;
   search: string;
+  location: string;
   sort: string;
   order: 'ASC' | 'DESC';
 }
@@ -23,31 +36,91 @@ interface VoteStatus {
   };
 }
 
+// Helper function to safely extract error information
+const getErrorInfo = (error: unknown) => {
+  if (error instanceof Error) {
+    return {
+      message: error.message,
+      status: (error as any)?.response?.status,
+      serverError: (error as any)?.response?.data?.error
+    };
+  }
+  
+  const anyError = error as any;
+  return {
+    message: anyError?.message || 'Unbekannter Fehler',
+    status: anyError?.response?.status,
+    serverError: anyError?.response?.data?.error
+  };
+};
+
 export default function IssuesPage() {
+  const router = useRouter();
+  const queryClient = useQueryClient();
   const [currentPage, setCurrentPage] = useState(1);
   const [filters, setFilters] = useState<FiltersState>({
     category: '',
     status: '',
     search: '',
+    location: '',
     sort: 'created_at',
     order: 'DESC'
   });
   const [voteStatuses, setVoteStatuses] = useState<VoteStatus>({});
   const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [adminUser, setAdminUser] = useState<any>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // Check admin status on page load
+  useEffect(() => {
+    const checkAdmin = async () => {
+      const { isAdmin, user } = await checkAdminStatus();
+      setIsAdmin(isAdmin);
+      setAdminUser(user);
+    };
+    checkAdmin();
+  }, []);
+
+  // Handle URL parameters for filter presets (z.B. von Dashboard-Links)
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const presetFilters: Partial<FiltersState> = {};
+    
+    if (urlParams.get('status')) presetFilters.status = urlParams.get('status')!;
+    if (urlParams.get('category')) presetFilters.category = urlParams.get('category')!;
+    
+    if (Object.keys(presetFilters).length > 0) {
+      setFilters(prev => ({ ...prev, ...presetFilters }));
+    }
+  }, [router.query]);
 
   // Fetch categories for filter dropdown
   const { data: categoriesData } = useQuery('categories', getCategories);
 
   // Fetch issues with current filters and pagination
   const { data: issuesData, isLoading, error, refetch } = useQuery(
-    ['issues', currentPage, filters],
-    () => getIssues({
-      page: currentPage,
-      limit: 12,
-      ...filters
-    }),
+    ['issues', currentPage, filters, isAdmin],
+    () => {
+      const params: any = {
+        page: currentPage,
+        limit: 12,
+        category: filters.category,
+        status: filters.status,
+        search: filters.search,
+        sort: filters.sort,
+        order: filters.order
+      };
+      
+      // Für Admins: Verwende den Admin-Endpoint mit approved='all'
+      if (isAdmin) {
+        params.approved = 'all';
+      }
+      
+      return getIssues(params);
+    },
     {
-      keepPreviousData: true
+      keepPreviousData: true,
+      enabled: true // Query läuft immer, auch wenn isAdmin noch false ist
     }
   );
 
@@ -90,33 +163,102 @@ export default function IssuesPage() {
   const handleVote = async (issueId: number) => {
     try {
       const currentStatus = voteStatuses[issueId];
+      let result;
       
       if (currentStatus?.hasVoted) {
-        const result = await removeVote(issueId);
-        setVoteStatuses(prev => ({
-          ...prev,
-          [issueId]: {
-            hasVoted: false,
-            voteCount: result.voteCount
-          }
-        }));
+        result = await removeVote(issueId);
         toast.success('Stimme entfernt');
       } else {
-        const result = await voteForIssue(issueId);
-        setVoteStatuses(prev => ({
-          ...prev,
-          [issueId]: {
-            hasVoted: true,
-            voteCount: result.voteCount
+        try {
+          result = await voteForIssue(issueId);
+          toast.success('Stimme abgegeben!');
+        } catch (voteError: any) {
+          // Falls der Vote fehlschlägt (z.B. bereits gevotet), versuche ihn zu entfernen
+          if (voteError?.response?.status === 400) {
+            console.log('Vote bereits vorhanden, entferne stattdessen...');
+            result = await removeVote(issueId);
+            toast.success('Stimme entfernt');
+          } else {
+            throw voteError;
           }
-        }));
-        toast.success('Stimme abgegeben!');
+        }
       }
       
-      // Refresh issues data to stay in sync with backend
+      // Lokalen Vote-Status aktualisieren ohne die Liste neu zu laden
+      setVoteStatuses(prev => ({
+        ...prev,
+        [issueId]: {
+          hasVoted: !currentStatus?.hasVoted,
+          voteCount: result.voteCount
+        }
+      }));
+      
+      // Nur bei Sortierung nach Vote-Count die Liste neu laden
+      if (filters.sort === 'vote_count') {
+        await refetch();
+      }
+    } catch (error: any) {
+      console.error('Vote error:', error);
+      toast.error('Fehler beim Abstimmen');
+    }
+  };
+
+  // Admin-Aktions-Handler
+  const handleApprove = async (issueId: number) => {
+    try {
+      await approveIssue(issueId, 'Genehmigt durch Admin');
+      toast.success('Meldung genehmigt!');
+      // Nur refetch verwenden, um doppelte Requests zu vermeiden
       refetch();
     } catch (error) {
-      toast.error('Fehler beim Abstimmen');
+      toast.error('Fehler beim Genehmigen');
+    }
+  };
+
+  const handleReject = async (issueId: number) => {
+    try {
+      await rejectIssue(issueId, 'Abgelehnt durch Admin');
+      toast.success('Meldung abgelehnt');
+      // Nur refetch verwenden, um doppelte Requests zu vermeiden
+      refetch();
+    } catch (error) {
+      toast.error('Fehler beim Ablehnen');
+    }
+  };
+
+  const handleStatusChange = async (issueId: number, newStatus: string) => {
+    try {
+      await updateIssueStatus(issueId, newStatus);
+      toast.success('Status aktualisiert');
+      // Nur refetch verwenden, um doppelte Requests zu vermeiden
+      refetch();
+    } catch (error) {
+      toast.error('Fehler beim Aktualisieren des Status');
+    }
+  };
+
+  const handleReactivate = async (issueId: number) => {
+    try {
+      await reactivateIssue(issueId);
+      toast.success('Meldung reaktiviert');
+      // Nur refetch verwenden, um doppelte Requests zu vermeiden
+      refetch();
+    } catch (error) {
+      toast.error('Fehler beim Reaktivieren');
+    }
+  };
+
+  const handleDelete = async (issueId: number) => {
+    if (!confirm('Sind Sie sicher, dass Sie diese Meldung löschen möchten?')) {
+      return;
+    }
+    try {
+      await deleteIssue(issueId, 'Gelöscht durch Admin');
+      toast.success('Meldung gelöscht');
+      // Nur refetch verwenden, um doppelte Requests zu vermeiden
+      refetch();
+    } catch (error) {
+      toast.error('Fehler beim Löschen');
     }
   };
 
@@ -138,12 +280,16 @@ export default function IssuesPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'resolved':
-        return '#10B981';
-      case 'in_progress':
+      case 'pending_approval':
         return '#F59E0B';
       case 'submitted':
         return '#6B7280';
+      case 'in_progress':
+        return '#F59E0B';
+      case 'resolved':
+        return '#10B981';
+      case 'rejected':
+        return '#EF4444';
       default:
         return '#6B7280';
     }
@@ -151,16 +297,24 @@ export default function IssuesPage() {
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'resolved':
-        return 'Gelöst';
-      case 'in_progress':
-        return 'In Bearbeitung';
+      case 'pending_approval':
+        return 'Warten auf Genehmigung';
       case 'submitted':
         return 'Eingereicht';
+      case 'in_progress':
+        return 'In Bearbeitung';
+      case 'resolved':
+        return 'Gelöst';
+      case 'rejected':
+        return 'Abgelehnt';
       default:
         return status;
     }
   };
+
+
+
+
 
   const getSortLabel = (sort: string) => {
     switch (sort) {
@@ -247,6 +401,17 @@ export default function IssuesPage() {
                 </div>
 
                 <div className="filter-group">
+                  <label className="filter-label">Ort</label>
+                  <input
+                    type="text"
+                    placeholder="Nach Ort filtern..."
+                    value={filters.location}
+                    onChange={(e) => handleFilterChange('location', e.target.value)}
+                    className="filter-input"
+                  />
+                </div>
+
+                <div className="filter-group">
                   <label className="filter-label">Status</label>
                   <select
                     value={filters.status}
@@ -254,9 +419,11 @@ export default function IssuesPage() {
                     className="filter-select"
                   >
                     <option value="">Alle Status</option>
+                    {isAdmin && <option value="pending_approval">Warten auf Genehmigung</option>}
                     <option value="submitted">Eingereicht</option>
                     <option value="in_progress">In Bearbeitung</option>
                     <option value="resolved">Gelöst</option>
+                    {isAdmin && <option value="rejected">Abgelehnt</option>}
                   </select>
                 </div>
 
@@ -291,10 +458,34 @@ export default function IssuesPage() {
               </div>
             ) : error ? (
               <div className="error-container">
-                <p>Fehler beim Laden der Meldungen. Bitte versuchen Sie es erneut.</p>
-                <button onClick={() => refetch()} className="btn btn-secondary">
-                  Erneut versuchen
-                </button>
+                <h3>🚨 Fehler beim Laden der Meldungen</h3>
+                <div className="error-details">
+                  {(() => {
+                    const errorInfo = getErrorInfo(error);
+                    return (
+                      <>
+                        <p><strong>Fehlermeldung:</strong> {errorInfo.message}</p>
+                        {errorInfo.status && (
+                          <p><strong>Status-Code:</strong> {errorInfo.status}</p>
+                        )}
+                        {errorInfo.serverError && (
+                          <p><strong>Server-Fehler:</strong> {errorInfo.serverError}</p>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+                <div className="error-actions">
+                  <button onClick={() => refetch()} className="btn btn-secondary">
+                    🔄 Erneut versuchen
+                  </button>
+                  <button 
+                    onClick={() => window.location.reload()} 
+                    className="btn btn-outline"
+                  >
+                    🔃 Seite neu laden
+                  </button>
+                </div>
               </div>
             ) : issuesData?.issues?.length === 0 ? (
               <div className="no-issues">
@@ -314,54 +505,164 @@ export default function IssuesPage() {
 
                 {/* Issues Grid */}
                 <div className="issues-grid">
-                  {issuesData?.issues.map((issue: Issue) => (
-                    <div key={issue.id} className="issue-card">
-                      <div className="issue-header">
-                        <div className="issue-meta">
-                          <span className="issue-category">
-                            {getCategoryLabel(issue.category)}
-                          </span>
-                          {issue.location && (
-                            <span className="issue-location">📍 {issue.location}</span>
-                          )}
-                        </div>
+                  {issuesData?.issues.map((issue: Issue) => {
+                    return (
+                      <div 
+                        key={issue.id} 
+                        className={`issue-card ${issue.status === 'pending_approval' ? 'pending-approval' : ''}`}
+                      >
+                        {/* Moderne Status-Leiste */}
                         <div 
-                          className="issue-status"
+                          className="issue-status-bar"
                           style={{ 
-                            color: getStatusColor(issue.status),
-                            fontWeight: 'bold'
+                            background: `linear-gradient(135deg, ${getStatusColor(issue.status)} 0%, ${getStatusColor(issue.status)}90 100%)`
+                          }}
+                        ></div>
+                        
+                        {/* Status-Text in eigener Zeile */}
+                        <div 
+                          className="issue-status-text"
+                          style={{ 
+                            color: getStatusColor(issue.status)
                           }}
                         >
                           {getStatusText(issue.status)}
                         </div>
-                      </div>
-                      
-                      <h3 className="issue-title">{issue.title}</h3>
-                      <p className="issue-description">
-                        {issue.description.length > 200 
-                          ? `${issue.description.substring(0, 200)}...` 
-                          : issue.description
-                        }
-                      </p>
-                      
-                      <div className="issue-stats">
-                        <button
-                          onClick={() => handleVote(issue.id)}
-                          className={`vote-button ${voteStatuses[issue.id]?.hasVoted ? 'voted' : ''}`}
-                        >
-                          <span className="vote-icon">
-                            {voteStatuses[issue.id]?.hasVoted ? '👍' : '👍'}
-                          </span>
-                          <span className="vote-count">
-                            {voteStatuses[issue.id]?.voteCount || issue.vote_count || 0} Stimmen
-                          </span>
-                        </button>
-                        <div className="issue-date">
-                          {new Date(issue.created_at).toLocaleDateString('de-DE')}
+                        
+                        <Link href={`/issue/${issue.id}`} className="issue-title-link">
+                          <h3 className="issue-title">
+                              {issue.title}
+                          </h3>
+                          
+                          {/* Badges unter dem Titel */}
+                          <div className="issue-badges small">
+                            {issue.location && (
+                              <span className="badge badge-location">
+                                📍 {issue.location}
+                              </span>
+                            )}
+                            <span className="badge badge-category">
+                              {getCategoryLabel(issue.category)}
+                            </span>
+                          </div>
+                          
+                          <p className="issue-description">
+                            {issue.description.length > 200 
+                              ? `${issue.description.substring(0, 200)}...` 
+                              : issue.description
+                            }
+                          </p>
+                        </Link>
+                        
+                        {isAdmin && !issue.is_anonymous && issue.submitter_name && issue.submitter_name.trim() && (
+                          <div className="submitter-info">
+                            <p>
+                              <strong>Eingereicht von:</strong> {issue.submitter_name}
+                              {issue.submitter_email && ` (${issue.submitter_email})`}
+                            </p>
+                          </div>
+                        )}
+                        
+                        <div className="horizontal-line thin"></div>
+                        
+                        <div className="issue-stats">
+                          {issue.status !== 'pending_approval' && issue.status !== 'rejected' && (
+                            <button
+                              onClick={() => handleVote(issue.id)}
+                              className={`vote-button ${voteStatuses[issue.id]?.hasVoted ? 'voted' : ''}`}
+                            >
+                              <span className="vote-icon">
+                                {voteStatuses[issue.id]?.hasVoted ? '👍' : '👍'}
+                              </span>
+                              <span className="vote-count">
+                                {voteStatuses[issue.id]?.voteCount || issue.vote_count || 0} Stimmen
+                              </span>
+                            </button>
+                          )}
+                          {(issue.status === 'pending_approval' || issue.status === 'rejected') && (
+                            <div className="vote-display">
+                              <span className="vote-icon">👍</span>
+                              <span className="vote-count">
+                                {voteStatuses[issue.id]?.voteCount || issue.vote_count || 0} Stimmen
+                              </span>
+                            </div>
+                          )}
+                          <div className="issue-date">
+                            {new Date(issue.created_at).toLocaleDateString('de-DE')}
+                          </div>
                         </div>
+
+                        {/* Admin-Aktionsknöpfe */}
+                        {isAdmin && (
+                          <>
+                            <div className="horizontal-line thin"></div>
+                            <div className="admin-actions">
+                            {issue.status === 'pending_approval' && (
+                              <>
+                                <button
+                                  onClick={() => handleApprove(issue.id)}
+                                  className="admin-btn approve-btn"
+                                >
+                                  ✅ Genehmigen
+                                </button>
+                                <button
+                                  onClick={() => handleReject(issue.id)}
+                                  className="admin-btn reject-btn"
+                                >
+                                  ❌ Ablehnen
+                                </button>
+                              </>
+                            )}
+                            
+                            {(issue.status === 'submitted' || issue.status === 'in_progress' || issue.status === 'resolved') && (
+                              <>
+                                {issue.status !== 'in_progress' && (
+                                  <button
+                                    onClick={() => handleStatusChange(issue.id, 'in_progress')}
+                                    className="admin-btn status-btn"
+                                  >
+                                    🔄 In Bearbeitung
+                                  </button>
+                                )}
+                                {issue.status !== 'resolved' && (
+                                  <button
+                                    onClick={() => handleStatusChange(issue.id, 'resolved')}
+                                    className="admin-btn status-btn"
+                                  >
+                                    ✅ Als gelöst markieren
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => handleReject(issue.id)}
+                                  className="admin-btn reject-btn"
+                                >
+                                  ❌ Ablehnen
+                                </button>
+                              </>
+                            )}
+                            
+                            {issue.status === 'rejected' && (
+                              <>
+                                <button
+                                  onClick={() => handleReactivate(issue.id)}
+                                  className="admin-btn reactivate-btn"
+                                >
+                                  🔄 Reaktivieren
+                                </button>
+                                <button
+                                  onClick={() => handleDelete(issue.id)}
+                                  className="admin-btn delete-btn"
+                                >
+                                  🗑️ Löschen
+                                </button>
+                              </>
+                            )}
+                          </div>
+                          </>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {/* Pagination */}
@@ -500,6 +801,123 @@ export default function IssuesPage() {
           color: var(--fdp-black);
         }
 
+        .vote-display {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          background: #f9fafb;
+          border: 1px solid #e5e7eb;
+          border-radius: 20px;
+          padding: 8px 16px;
+          font-size: 14px;
+          font-weight: 600;
+          color: #6b7280;
+          cursor: not-allowed;
+        }
+
+        .issue-title-link {
+          color: inherit;
+        }
+
+        .issue-status-header {
+          display: flex;
+          justify-content: flex-end;
+          margin-bottom: 15px;
+        }
+
+        .approval-status {
+          font-size: 0.75rem;
+          padding: 2px 8px;
+          border-radius: 12px;
+          background: rgba(255, 255, 255, 0.1);
+          backdrop-filter: blur(4px);
+          text-align: center;
+        }
+
+        .submitter-info {
+          margin: 10px 0;
+          padding: 8px;
+          background: #f9fafb;
+          border-radius: 6px;
+          font-size: 0.875rem;
+          color: #4b5563;
+        }
+
+        .submitter-info p {
+          margin: 0;
+        }
+
+        .admin-actions {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+
+        .admin-btn {
+          padding: 6px 12px;
+          border: none;
+          border-radius: 6px;
+          font-size: 0.75rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        }
+
+        .admin-btn.approve-btn {
+          background: #10B981;
+          color: white;
+        }
+
+        .admin-btn.approve-btn:hover {
+          background: #059669;
+        }
+
+        .admin-btn.reject-btn {
+          background: #EF4444;
+          color: white;
+        }
+
+        .admin-btn.reject-btn:hover {
+          background: #DC2626;
+        }
+
+        .admin-btn.status-btn {
+          background: #3B82F6;
+          color: white;
+        }
+
+        .admin-btn.status-btn:hover {
+          background: #2563EB;
+        }
+
+        .admin-btn.reactivate-btn {
+          background: var(--fdp-yellow);
+          color: var(--fdp-black);
+        }
+
+        .admin-btn.reactivate-btn:hover {
+          background: var(--fdp-magenta);
+          color: white;
+        }
+
+        .admin-btn.delete-btn {
+          background: #EF4444;
+          color: white;
+        }
+
+        .admin-btn.delete-btn:hover {
+          background: #DC2626;
+        }
+
+        .issue-card.pending-approval {
+          background: #fff7b2;
+          border: 2px solid #fbbf24;
+          box-shadow: 0 2px 8px rgba(251, 191, 36, 0.15);
+        }
+
         .pagination {
           display: flex;
           justify-content: center;
@@ -538,6 +956,41 @@ export default function IssuesPage() {
           text-align: center;
           padding: 60px 20px;
           color: #dc2626;
+          background: #fef2f2;
+          border: 1px solid #fecaca;
+          border-radius: 12px;
+          margin: 20px 0;
+        }
+
+        .error-container h3 {
+          margin-bottom: 20px;
+          font-size: 1.5rem;
+          color: #dc2626;
+        }
+
+        .error-details {
+          background: white;
+          padding: 20px;
+          border-radius: 8px;
+          margin: 20px 0;
+          text-align: left;
+          border: 1px solid #f3f4f6;
+        }
+
+        .error-details p {
+          margin: 10px 0;
+          color: #374151;
+        }
+
+        .error-details strong {
+          color: #1f2937;
+        }
+
+        .error-actions {
+          display: flex;
+          gap: 15px;
+          justify-content: center;
+          flex-wrap: wrap;
         }
 
         @media (max-width: 1024px) {

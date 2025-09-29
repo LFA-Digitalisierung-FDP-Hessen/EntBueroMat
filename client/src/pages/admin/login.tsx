@@ -71,7 +71,7 @@ export default function AdminLogin() {
                     autoComplete="email"
                     required
                     className={`form-input ${errors.email ? 'error' : ''}`}
-                    placeholder="admin@fdp-hessen.de"
+                    placeholder="E-Mail-Adresse"
                     {...register('email', { 
                       required: 'E-Mail-Adresse ist erforderlich',
                       pattern: {

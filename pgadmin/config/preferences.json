@@ -1,0 +1,16 @@
+{
+  "preferences": {
+    "misc": {
+      "user_language": "de"
+    },
+    "browser": {
+      "show_system_objects": false
+    },
+    "dashboards": {
+      "session_stats_refresh": 5,
+      "tps_stats_refresh": 5,
+      "ti_stats_refresh": 5,
+      "to_stats_refresh": 5
+    }
+  }
+}

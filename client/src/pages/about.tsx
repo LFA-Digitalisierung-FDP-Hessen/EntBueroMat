@@ -42,19 +42,18 @@ export default function About() {
             <div>
               <div className="space-y-6 text-lg leading-relaxed">
                 <p>
-                  Der EntBüro-Mat ist ein digitales Meldesystem, das es Bürgern ermöglicht, 
+                  Der EntBüro-Mat ist ein digitales Meldesystem, das es Bürgerinnen und Bürgern ermöglicht, 
                   Bürokratieprobleme und Verwaltungsärgernisse einfach und anonym zu melden. 
                   Unser Ziel ist es, die Verwaltung bürgerfreundlicher und effizienter zu machen.
-                </p>
-                <p>
-                  Durch die Sammlung und Kategorisierung von Problemen können wir 
-                  systematisch an Lösungen arbeiten und die Verwaltung dabei unterstützen, 
-                  ihre Prozesse zu optimieren.
                 </p>
                 <p>
                   Jede Meldung wird an die zuständigen 
                   Behörden sowie an den lokalen FDP-Kreisverband weitergeleitet. Gemeinsam mit den Bürgern arbeiten wir 
                   daran, Hessen zu einem lebenswerten und effizienten Bundesland zu machen.
+                </p>
+                <p>
+                  Diese Plattform ist eine Initiative von Mitgliedern der FDP Hessen. Führender Initiator
+                  ist Jamal Kahn, entwickelt wurde sie von Mark Rothermel.
                 </p>
               </div>
             </div>

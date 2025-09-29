@@ -1,0 +1,25 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "EntBüro-Mat Database",
+      "Group": "Servers",
+      "Host": "database",
+      "Port": 5432,
+      "MaintenanceDB": "entbueromat",
+      "Username": "entbueromat_user",
+      "PassFile": "/tmp/pgpassfile",
+      "SSLMode": "prefer",
+      "Timeout": 10,
+      "UseSSHTunnel": 0,
+      "TunnelHost": "",
+      "TunnelPort": "22",
+      "TunnelUsername": "",
+      "TunnelAuthentication": 0,
+      "KerberosAuthentication": false,
+      "ConnectionParameters": {
+        "sslmode": "prefer",
+        "connect_timeout": "10"
+      }
+    }
+  }
+}

@@ -109,9 +109,9 @@ router.get('/stats', authenticateAdmin, async (req, res) => {
             // Total issues
             query('SELECT COUNT(*) as total FROM issues'),
             // Pending approval
-            query('SELECT COUNT(*) as pending FROM issues WHERE approved_at IS NULL'),
+            query('SELECT COUNT(*) as pending FROM issues WHERE status = \'pending_approval\''),
             // Approved issues
-            query('SELECT COUNT(*) as approved FROM issues WHERE approved_at IS NOT NULL'),
+            query('SELECT COUNT(*) as approved FROM issues WHERE status != \'pending_approval\' AND status != \'rejected\''),
             // Resolved issues
             query('SELECT COUNT(*) as resolved FROM issues WHERE status = \'resolved\''),
             // Total votes
@@ -134,7 +134,6 @@ router.get('/stats', authenticateAdmin, async (req, res) => {
             query(`
                 SELECT status, COUNT(*) as count 
                 FROM issues 
-                WHERE approved_at IS NOT NULL 
                 GROUP BY status
             `)
         ]);
@@ -155,112 +154,9 @@ router.get('/stats', authenticateAdmin, async (req, res) => {
     }
 });
 
-// GET /api/admin/issues - Get all issues for admin management
-router.get('/issues', authenticateAdmin, async (req, res) => {
-    try {
-        const {
-            page = 1,
-            limit = 20,
-            category,
-            status,
-            approved,
-            sort = 'created_at',
-            order = 'DESC'
-        } = req.query;
+// Admin issues are now handled by the unified /api/issues endpoint
 
-        const offset = (page - 1) * limit;
-        let whereClause = 'WHERE 1=1';
-        const queryParams = [];
-        let paramCount = 0;
-
-        // Add filters
-        if (category) {
-            whereClause += ` AND category = $${++paramCount}`;
-            queryParams.push(category);
-        }
-
-        if (status) {
-            whereClause += ` AND status = $${++paramCount}`;
-            queryParams.push(status);
-        }
-
-        if (approved === 'pending') {
-            whereClause += ' AND approved_at IS NULL';
-        } else if (approved === 'approved') {
-            whereClause += ' AND approved_at IS NOT NULL';
-        }
-
-        // Validate sort and order
-        const allowedSorts = ['created_at', 'updated_at', 'title', 'status'];
-        const allowedOrders = ['ASC', 'DESC'];
-        const finalSort = allowedSorts.includes(sort) ? sort : 'created_at';
-        const finalOrder = allowedOrders.includes(order.toUpperCase()) ? order.toUpperCase() : 'DESC';
-
-        const issuesQuery = `
-            SELECT 
-                i.*,
-                COUNT(v.id) as vote_count
-            FROM issues i
-            LEFT JOIN votes v ON i.id = v.issue_id
-            ${whereClause}
-            GROUP BY i.id
-            ORDER BY i.${finalSort} ${finalOrder}
-            LIMIT $${++paramCount} OFFSET $${++paramCount}
-        `;
-
-        queryParams.push(limit, offset);
-
-        const countQuery = `
-            SELECT COUNT(*) as total
-            FROM issues i
-            ${whereClause}
-        `;
-
-        const [issuesResult, countResult] = await Promise.all([
-            query(issuesQuery, queryParams),
-            query(countQuery, queryParams.slice(0, -2))
-        ]);
-
-        const total = parseInt(countResult.rows[0].total);
-        const totalPages = Math.ceil(total / limit);
-
-        res.json({
-            issues: issuesResult.rows,
-            pagination: {
-                page: parseInt(page),
-                limit: parseInt(limit),
-                total,
-                totalPages,
-                hasNext: page < totalPages,
-                hasPrev: page > 1
-            }
-        });
-    } catch (error) {
-        console.error('Error fetching admin issues:', error);
-        res.status(500).json({ error: 'Failed to fetch issues' });
-    }
-});
-
-// GET /api/admin/issues/rejected - Get rejected issues for admin management
-router.get('/issues/rejected', authenticateAdmin, async (req, res) => {
-    try {
-        const rejectedQuery = `
-            SELECT 
-                id, title, description, category, location, issue_type,
-                is_anonymous, submitter_name, submitter_email, created_at,
-                attachment_path, rejected_at
-            FROM issues
-            WHERE status = 'rejected'
-            ORDER BY rejected_at DESC
-        `;
-
-        const result = await query(rejectedQuery);
-        res.json({ issues: result.rows });
-    } catch (error) {
-        console.error('Error fetching rejected issues:', error);
-        res.status(500).json({ error: 'Failed to fetch rejected issues' });
-    }
-});
+// Rejected issues are now handled by the unified /api/issues endpoint with status=rejected filter
 
 // GET /api/admin/export - Export issues to CSV
 router.get('/export', authenticateAdmin, async (req, res) => {
@@ -368,19 +264,19 @@ router.put('/issues/:id/status', authenticateAdmin, async (req, res) => {
         const { id } = req.params;
         const { status, update_text } = req.body;
 
-        if (!['submitted', 'in_progress', 'resolved', 'rejected'].includes(status)) {
+        if (!['pending_approval', 'submitted', 'in_progress', 'resolved', 'rejected'].includes(status)) {
             return res.status(400).json({ error: 'Invalid status' });
         }
 
         // Update issue status
         const updateQuery = `
             UPDATE issues 
-            SET status = $1, resolved_at = CASE WHEN $1 = 'resolved' THEN CURRENT_TIMESTAMP ELSE NULL END
-            WHERE id = $2 AND approved_at IS NOT NULL
+            SET status = $1, resolved_at = CASE WHEN $2 = 'resolved' THEN CURRENT_TIMESTAMP ELSE NULL END
+            WHERE id = $3 AND approved_at IS NOT NULL
             RETURNING id, title, status
         `;
 
-        const updateResult = await query(updateQuery, [status, id]);
+        const updateResult = await query(updateQuery, [status, status, id]);
 
         if (updateResult.rows.length === 0) {
             return res.status(404).json({ error: 'Issue not found or not approved' });
@@ -427,6 +323,55 @@ router.post('/issues/:id/reactivate', authenticateAdmin, async (req, res) => {
     } catch (error) {
         console.error('Error reactivating issue:', error);
         res.status(500).json({ error: 'Failed to reactivate issue' });
+    }
+});
+
+// POST /api/admin/issues/:id/update - Add an update to an issue (admin only)
+router.post('/issues/:id/update', authenticateAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { update_text, is_public = true } = req.body;
+
+        if (!update_text || update_text.trim().length === 0) {
+            return res.status(400).json({ error: 'Update text is required' });
+        }
+
+        // Check if issue exists and is approved
+        const issueCheckQuery = `
+            SELECT id, title FROM issues 
+            WHERE id = $1 AND status != 'pending_approval'
+        `;
+        const issueCheck = await query(issueCheckQuery, [id]);
+
+        if (issueCheck.rows.length === 0) {
+            return res.status(404).json({ error: 'Issue not found or not approved' });
+        }
+
+        // Insert the update
+        const insertUpdateQuery = `
+            INSERT INTO issue_updates (issue_id, update_text, updated_by, updater_name, is_public)
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING id, update_text, updated_by, updater_name, created_at, is_public
+        `;
+
+        const updateResult = await query(insertUpdateQuery, [
+            id, 
+            update_text.trim(), 
+            'admin', 
+            req.user.username,
+            is_public
+        ]);
+
+        // Update the issue's updated_at timestamp
+        await query('UPDATE issues SET updated_at = CURRENT_TIMESTAMP WHERE id = $1', [id]);
+
+        res.status(201).json({
+            message: 'Update added successfully',
+            update: updateResult.rows[0]
+        });
+    } catch (error) {
+        console.error('Error adding issue update:', error);
+        res.status(500).json({ error: 'Failed to add update' });
     }
 });
 

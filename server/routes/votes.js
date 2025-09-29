@@ -1,15 +1,8 @@
 const express = require('express');
-const crypto = require('crypto');
 const { query } = require('../database/db');
+const { createUserIdentifier } = require('../utils/userIdentifier');
 
 const router = express.Router();
-
-// Create user identifier for anonymous voting
-function createUserIdentifier(req) {
-    const ip = req.ip || req.connection.remoteAddress;
-    const userAgent = req.get('User-Agent') || '';
-    return crypto.createHash('sha256').update(ip + userAgent).digest('hex');
-}
 
 // POST /api/votes/:issueId - Vote for an issue (like)
 router.post('/:issueId', async (req, res) => {

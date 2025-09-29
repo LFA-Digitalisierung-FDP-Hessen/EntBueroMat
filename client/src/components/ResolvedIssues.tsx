@@ -1,4 +1,5 @@
 import React from 'react';
+import Link from 'next/link';
 import { useQuery } from 'react-query';
 import { getRecentResolved } from '../utils/api';
 
@@ -121,7 +122,9 @@ export default function ResolvedIssues() {
             
             {/* Title */}
             <h3 className="text-lg font-semibold text-gray-900 mb-3 leading-tight">
-              {issue.title}
+              <Link href={`/issue/${issue.id}`} className="text-gray-900 hover:text-purple-600 transition-colors duration-300 no-underline hover:underline">
+                {issue.title}
+              </Link>
             </h3>
             
             {/* Description */}

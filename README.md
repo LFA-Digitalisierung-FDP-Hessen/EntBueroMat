@@ -19,6 +19,13 @@ EntBüroMat ist eine öffentliche Plattform, auf der Bürger und Unternehmen bü
 - ✅ **Admin-Interface**: Vollständige Verwaltung und Moderation
 - ✅ **DSGVO-konform**: Sichere und datenschutzkonforme Speicherung
 
+## Bugs und Feature-Requests
+- "pending_approval" in Detail-Ansicht neu eingereichter Meldungen
+- In Meldung-Detailansicht Kontrollknöpfe für Admins einbauen
+- Ort-Filter funktioniert noch nicht
+- Meldung-Titel in mobiler Ansicht nicht abkürzen
+- Frontpage in der mobilen Ansicht korrigieren
+
 ## 🏗️ Architektur
 
 ### Backend (Node.js/Express)

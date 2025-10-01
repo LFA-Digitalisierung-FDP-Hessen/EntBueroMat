@@ -53,7 +53,8 @@ export default function About() {
                 </p>
                 <p>
                   Diese Plattform ist eine Initiative von Mitgliedern der FDP Hessen. Führender Initiator
-                  ist Jamal Kahn, entwickelt wurde sie von Mark Rothermel.
+                  ist Jamal Khan, entwickelt wurde sie von Mark Rothermel – beide Mitglied im Landesfachausschuss
+                  Digitalisierung der FDP Hessen.
                 </p>
               </div>
             </div>
